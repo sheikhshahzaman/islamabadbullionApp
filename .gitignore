@@ -1,0 +1,17 @@
+# macOS noise
+.DS_Store
+**/.DS_Store
+
+# Duplicate archives of the same code (already extracted)
+/_legacy.zip
+/legacy_ibe.zip
+
+# SECRETS — never commit these
+**/key.properties
+**/*.jks
+**/*.keystore
+_legacy/metal/includes/db.php
+
+# Machine-specific / regenerated
+**/local.properties
+**/ios/Pods/

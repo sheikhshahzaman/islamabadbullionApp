@@ -1,0 +1,80 @@
+name: legacy_ibe
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 4.1.0+2400
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  intl: ^0.20.2
+  provider: ^6.1.2
+  url_launcher: ^6.3.0
+  internet_connection_checker_plus: ^2.9.1+2
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Native splash generator (dev tool)
+  flutter_native_splash: ^2.4.7
+
+  # App icon generator (dev tool)
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Splash assets (used by flutter_native_splash config below)
+    - assets/images/splash.png
+    - assets/images/splash_android12.png
+    - assets/images/native.png
+    - assets/images/logo.png
+
+    # App icon source files (used by flutter_launcher_icons config below)
+    - assets/icon/app_icon.png
+    - assets/icon/app_icon_fg.png
+
+# -------------------------
+# Native Splash Configuration
+# -------------------------
+flutter_native_splash:
+  color: "#224735"
+  image: assets/images/native.png
+  fullscreen: true
+
+  android_12:
+    color: "#224735"
+    image: assets/images/splash_android12.png
+    icon_background_color: "#224735"
+
+# -------------------------
+# Launcher Icon Configuration
+# -------------------------
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+
+  # iOS + Android fallback icon (1024x1024 recommended, no transparency)
+  image_path: "assets/icon/app_icon.png"
+
+  # Android adaptive icon (recommended)
+  adaptive_icon_background: "#1a5249"
+  adaptive_icon_foreground: "assets/icon/app_icon_fg.png"
+
+  # iOS: strip alpha channel if present
+  remove_alpha_ios: true
+
+  # Good default for adaptive icons
+  min_sdk_android: 21
