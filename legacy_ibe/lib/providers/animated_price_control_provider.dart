@@ -38,8 +38,9 @@ class AnimatedPriceControlProvider extends ChangeNotifier {
     _fetching = true;
 
     try {
-      final uri =
-      Uri.parse("${AppConfig.baseUrl}/api/animated_price_control.php");
+      // The Laravel backend exposes the admin's live-rates kill-switch on
+      // /api/prices; the app honors it the same way the website does.
+      final uri = Uri.parse("${AppConfig.apiBase}/prices");
 
       final response = await http.get(
         uri,
@@ -55,7 +56,7 @@ class AnimatedPriceControlProvider extends ChangeNotifier {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       if (decoded is! Map<String, dynamic>) return;
 
-      final nextEnabled = decoded["animated_price_enabled"] != false;
+      final nextEnabled = decoded["live_rates_enabled"] != false;
 
       if (nextEnabled != _enabled) {
         _enabled = nextEnabled;

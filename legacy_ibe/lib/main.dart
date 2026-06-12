@@ -7,7 +7,9 @@ import "package:flutter_localizations/flutter_localizations.dart";
 import "package:intl/date_symbol_data_local.dart";
 
 import "providers/app_settings.dart";
+import "providers/cart_provider.dart";
 import "providers/prices_provider.dart";
+import "providers/shop_provider.dart";
 import "screens/splash_screen.dart";
 import "theme/app_theme.dart";
 import "l10n/app_localizations.dart";
@@ -35,6 +37,8 @@ class MetalPricesApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => SilverNoteProvider()..load(),
         ),
+        ChangeNotifierProvider(create: (_) => ShopProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
       ],
       child: Consumer<AppSettings>(
         builder: (context, settings, _) {

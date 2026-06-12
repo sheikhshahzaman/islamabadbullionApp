@@ -12,6 +12,8 @@ import "delete_account_screen.dart";
 import "disclaimer_screen.dart";
 import "edit_profile_screen.dart";
 import "login_screen.dart";
+import "shop/products_screen.dart";
+import "shop/verify_screen.dart";
 import "signup_screen.dart";
 
 class MoreScreen extends StatelessWidget {
@@ -122,6 +124,30 @@ class MoreScreen extends StatelessWidget {
           ),
         ),
       ],
+      _MoreItem(
+        icon: Icons.storefront_outlined,
+        title: _t(context, "Shop Gold & Silver", "سونا چاندی خریدیں"),
+        subtitle: _t(
+          context,
+          "Browse bars and coins, order with delivery",
+          "بارز اور سکے دیکھیں، آرڈر کریں",
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ProductsScreen()),
+        ),
+      ),
+      _MoreItem(
+        icon: Icons.qr_code_scanner,
+        title: _t(context, "Verify Your Item", "اپنی چیز کی تصدیق کریں"),
+        subtitle: _t(
+          context,
+          "Scan QR or enter serial to check authenticity",
+          "کیو آر اسکین کریں یا سیریل نمبر درج کریں",
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const VerifyScreen()),
+        ),
+      ),
       _MoreItem(
         icon: Icons.calculate_outlined,
         title: _t(context, "Calculate Zakat", "زکوٰۃ کیلکولیٹر"),

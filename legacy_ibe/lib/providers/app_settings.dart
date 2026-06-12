@@ -10,7 +10,8 @@ class AppSettings extends ChangeNotifier {
 
   Locale _locale = const Locale("en");
 
-  List<String> get currencies => const ["PKR", "USD", "EUR", "GBP", "CAD", "AED"];
+  // Currencies backed by exchange rates in the Laravel /api/prices response.
+  List<String> get currencies => const ["PKR", "USD", "GBP", "EUR", "SAR", "AED"];
 
   String get currency => _currency;
   PriceUnit get unit => _unit;
