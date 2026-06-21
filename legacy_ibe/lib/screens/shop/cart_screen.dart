@@ -3,6 +3,7 @@ import "package:intl/intl.dart";
 import "package:provider/provider.dart";
 
 import "../../providers/cart_provider.dart";
+import "../../providers/shop_provider.dart";
 import "checkout_screen.dart";
 
 class CartScreen extends StatelessWidget {
@@ -116,10 +117,22 @@ class CartScreen extends StatelessWidget {
                       ),
                     ),
                     FilledButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const CheckoutScreen()),
-                      ),
+                      onPressed: () {
+                        final api = context.read<ShopProvider>().api;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CheckoutScreen(
+                              estimatedTotal: cart.subtotal,
+                              onCreateOrder: (name, phone) => api.createOrder(
+                                customerName: name,
+                                customerPhone: phone,
+                                productQuantities: cart.productQuantities,
+                              ),
+                              onOrderComplete: () => cart.clear(),
+                            ),
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.arrow_forward),
                       label: const Text("Checkout"),
                     ),

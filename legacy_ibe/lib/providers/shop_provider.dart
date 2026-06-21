@@ -6,7 +6,10 @@ import "../services/shop_api.dart";
 
 /// Loads the product catalog + categories from the Laravel backend.
 class ShopProvider extends ChangeNotifier {
-  final ShopApi _api = ShopApi(ApiClient());
+  ShopProvider({ApiClient? client}) : _client = client ?? ApiClient();
+
+  final ApiClient _client;
+  late final ShopApi _api = ShopApi(_client);
 
   List<ShopProduct> _products = [];
   List<ShopCategory> _categories = [];
@@ -62,5 +65,11 @@ class ShopProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _client.dispose(); // close the HTTP client (cancels any in-flight request)
+    super.dispose();
   }
 }

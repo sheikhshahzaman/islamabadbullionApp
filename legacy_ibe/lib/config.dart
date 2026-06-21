@@ -7,10 +7,6 @@ class AppConfig {
     defaultValue: "https://islamabadbullionexchange.com/api",
   );
 
-  // Old PHP backend — only the legacy auth screens still point here
-  // (via ApiConfig). Data screens all use apiBase now.
-  static const String baseUrl = "https://legacy.globalprints.pk/metal";
-
   // How often the app refreshes UI data (backend updates every minute)
   static const int refreshSeconds = 60;
 

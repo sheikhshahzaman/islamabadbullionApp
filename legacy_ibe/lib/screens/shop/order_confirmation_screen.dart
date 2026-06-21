@@ -51,8 +51,10 @@ class OrderConfirmationScreen extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(
-                              child: Text(
-                                  "${item.productName} × ${item.quantity}")),
+                            child: Text(item.isMetalLine
+                                ? item.productName
+                                : "${item.productName} × ${item.quantityLabel}"),
+                          ),
                           Text("Rs ${money.format(item.lineTotal)}"),
                         ],
                       ),

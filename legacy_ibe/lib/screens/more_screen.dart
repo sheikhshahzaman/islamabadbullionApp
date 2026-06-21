@@ -1,21 +1,16 @@
 import "package:flutter/material.dart";
-import "package:legacy_ibe/screens/privacy_policy_screen.dart";
-import "package:legacy_ibe/screens/terms_conditions_screen.dart";
-import "package:legacy_ibe/screens/zakat_screen.dart";
 import "package:provider/provider.dart";
 
 import "../providers/app_settings.dart";
-import "../providers/auth_provider.dart";
-import "about_us_screen.dart";
-import "change_password_screen.dart";
-import "delete_account_screen.dart";
-import "disclaimer_screen.dart";
-import "edit_profile_screen.dart";
-import "login_screen.dart";
+import "../theme/brand.dart";
+import "../widgets/brand_kit.dart";
+import "legal_page_screen.dart";
+import "zakat_screen.dart";
 import "shop/products_screen.dart";
 import "shop/verify_screen.dart";
-import "signup_screen.dart";
 
+/// "More" hub. Mirrors the website's QUICK LINKS + LEGAL navigation.
+/// (Home, Buy, Sell and Contact live on the bottom navigation bar.)
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
@@ -23,114 +18,21 @@ class MoreScreen extends StatelessWidget {
   static const Color _card = Color(0xFF0A3C30);
   static const Color _accent = Color(0xFFdfa273);
 
-  String _t(BuildContext context, String en, String ur) {
-    final isUrdu = context.watch<AppSettings>().isUrdu;
-    return isUrdu ? ur : en;
-  }
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: _card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: _accent.withOpacity(0.30)),
-          ),
-          title: const Text(
-            "Logout",
-            style: TextStyle(
-              color: _accent,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          content: const Text(
-            "Are you sure you want to logout?",
-            style: TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text(
-                "Logout",
-                style: TextStyle(
-                  color: _accent,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (ok == true) {
-      await auth.logout();
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Logged out successfully"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
+  String _t(BuildContext context, String en, String ur) =>
+      context.watch<AppSettings>().isUrdu ? ur : en;
 
   @override
   Widget build(BuildContext context) {
     final isUrdu = context.watch<AppSettings>().isUrdu;
-    final auth = context.watch<AuthProvider>();
 
-    final items = <_MoreItem>[
-      if (!auth.isLoggedIn) ...[
-        _MoreItem(
-          icon: Icons.login_outlined,
-          title: _t(context, "Login", "لاگ اِن"),
-          subtitle: _t(
-            context,
-            "Access your account",
-            "اپنے اکاؤنٹ تک رسائی حاصل کریں",
-          ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          ),
-        ),
-        _MoreItem(
-          icon: Icons.person_add_alt_1_outlined,
-          title: _t(context, "Create Account", "اکاؤنٹ بنائیں"),
-          subtitle: _t(
-            context,
-            "Signup with your details",
-            "اپنی معلومات کے ساتھ سائن اپ کریں",
-          ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SignupScreen()),
-          ),
-        ),
-      ],
+    final quickLinks = <_MoreItem>[
       _MoreItem(
         icon: Icons.storefront_outlined,
-        title: _t(context, "Shop Gold & Silver", "سونا چاندی خریدیں"),
+        title: _t(context, "Products", "پروڈکٹس"),
         subtitle: _t(
           context,
           "Browse bars and coins, order with delivery",
-          "بارز اور سکے دیکھیں، آرڈر کریں",
+          "بارز اور سکے دیکھیں، ڈیلیوری کے ساتھ آرڈر کریں",
         ),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ProductsScreen()),
@@ -138,11 +40,23 @@ class MoreScreen extends StatelessWidget {
       ),
       _MoreItem(
         icon: Icons.qr_code_scanner,
-        title: _t(context, "Verify Your Item", "اپنی چیز کی تصدیق کریں"),
+        title: _t(context, "Scan QR Code", "کیو آر کوڈ اسکین کریں"),
         subtitle: _t(
           context,
-          "Scan QR or enter serial to check authenticity",
-          "کیو آر اسکین کریں یا سیریل نمبر درج کریں",
+          "Scan the sticker on your item to check authenticity",
+          "اپنی چیز پر لگے اسٹیکر کو اسکین کر کے اصلیت جانچیں",
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const VerifyScreen(autoScan: true)),
+        ),
+      ),
+      _MoreItem(
+        icon: Icons.verified_outlined,
+        title: _t(context, "Verify Serial Number", "سیریل نمبر کی تصدیق کریں"),
+        subtitle: _t(
+          context,
+          "Enter the serial printed on your item to verify it",
+          "اپنی چیز پر درج سیریل نمبر سے تصدیق کریں",
         ),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const VerifyScreen()),
@@ -150,7 +64,7 @@ class MoreScreen extends StatelessWidget {
       ),
       _MoreItem(
         icon: Icons.calculate_outlined,
-        title: _t(context, "Calculate Zakat", "زکوٰۃ کیلکولیٹر"),
+        title: _t(context, "Zakat Calculator", "زکوٰۃ کیلکولیٹر"),
         subtitle: _t(
           context,
           "Estimate your zakat based on current rates",
@@ -160,6 +74,9 @@ class MoreScreen extends StatelessWidget {
           MaterialPageRoute(builder: (_) => const ZakatScreen()),
         ),
       ),
+    ];
+
+    final legal = <_MoreItem>[
       _MoreItem(
         icon: Icons.info_outline,
         title: _t(context, "About Us", "ہمارے بارے میں"),
@@ -169,7 +86,12 @@ class MoreScreen extends StatelessWidget {
           "ہماری کمپنی کے بارے میں مزید جانیں",
         ),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AboutUsScreen()),
+          MaterialPageRoute(
+            builder: (_) => LegalPageScreen(
+              slug: "about-us",
+              title: _t(context, "About Us", "ہمارے بارے میں"),
+            ),
+          ),
         ),
       ),
       _MoreItem(
@@ -181,7 +103,12 @@ class MoreScreen extends StatelessWidget {
           "ریٹس اور معلومات سے متعلق اہم نوٹس",
         ),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const DisclaimerScreen()),
+          MaterialPageRoute(
+            builder: (_) => LegalPageScreen(
+              slug: "disclaimer",
+              title: _t(context, "Disclaimer", "دستبرداری"),
+            ),
+          ),
         ),
       ),
       _MoreItem(
@@ -193,7 +120,12 @@ class MoreScreen extends StatelessWidget {
           "ہم آپ کے ڈیٹا کو کیسے ہینڈل کرتے ہیں",
         ),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+          MaterialPageRoute(
+            builder: (_) => LegalPageScreen(
+              slug: "privacy-policy",
+              title: _t(context, "Privacy Policy", "پرائیویسی پالیسی"),
+            ),
+          ),
         ),
       ),
       _MoreItem(
@@ -205,290 +137,113 @@ class MoreScreen extends StatelessWidget {
           "استعمال کی شرائط پڑھیں",
         ),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const TermsConditionsScreen()),
+          MaterialPageRoute(
+            builder: (_) => LegalPageScreen(
+              slug: "terms-and-conditions",
+              title: _t(context, "Terms & Conditions", "شرائط و ضوابط"),
+            ),
+          ),
         ),
       ),
-      if (auth.isLoggedIn)
-        _MoreItem(
-          icon: Icons.lock_reset_outlined,
-          title: _t(context, "Change Password", "پاس ورڈ تبدیل کریں"),
-          subtitle: _t(
-            context,
-            "Update your account password",
-            "اپنے اکاؤنٹ کا پاس ورڈ اپ ڈیٹ کریں",
-          ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
-          ),
-        ),
-      _MoreItem(
-        icon: Icons.logout_rounded,
-        title: _t(context, "Logout", "لاگ آؤٹ"),
-        subtitle: _t(
-          context,
-          "Sign out from this device",
-          "اس ڈیوائس سے سائن آؤٹ کریں",
-        ),
-        onTap: () => _confirmLogout(context),
-      ),
-      _MoreItem(
-        icon: Icons.delete_forever_outlined,
-        title: _t(context, "Delete Account", "اکاؤنٹ حذف کریں"),
-        subtitle: _t(
-          context,
-          "Permanently remove your account",
-          "اپنا اکاؤنٹ مستقل طور پر حذف کریں",
-        ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
-        ),
-      ),
-        _MoreItem(
-          icon: Icons.manage_accounts_outlined,
-          title: _t(context, "Edit Profile", "پروفائل تبدیل کریں"),
-          subtitle: _t(
-            context,
-            "Change your name, email and contact number",
-            "اپنا نام، ای میل اور رابطہ نمبر تبدیل کریں",
-          ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-          ),
-        ),
     ];
 
     return Scaffold(
       backgroundColor: _bg,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _accent.withOpacity(0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                    color: Colors.black.withOpacity(0.18),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _accent.withOpacity(0.25)),
-                    ),
-                    child: const Icon(Icons.menu, size: 22, color: _accent),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                      isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _t(context, "More", "مزید"),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: _accent,
-                          ),
-                          textAlign: isUrdu ? TextAlign.right : TextAlign.left,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _t(
-                            context,
-                            "Tools, account & legal information",
-                            "ٹولز، اکاؤنٹ اور قانونی معلومات",
-                          ),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: isUrdu ? TextAlign.right : TextAlign.left,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+      body: BrandBackground(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Brand.s16,
+              Brand.s16,
+              Brand.s16,
+              Brand.s24,
             ),
-            const SizedBox(height: 12),
-            _AccountCard(
-              isUrdu: isUrdu,
-              auth: auth,
-              onLogin: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              ),
-              onSignup: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SignupScreen()),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _accent.withOpacity(0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                    color: Colors.black.withOpacity(0.18),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  for (int i = 0; i < items.length; i++) ...[
-                    _MoreTile(item: items[i]),
-                    if (i != items.length - 1)
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.white.withOpacity(0.12),
-                      ),
-                  ],
-                ],
-              ),
-            ),
-          ],
+            children: [
+              _headerCard(context, isUrdu).entrance(),
+              const SizedBox(height: Brand.s24),
+              SectionHeader(
+                title: _t(context, "Quick Links", "فوری لنکس"),
+              ).entrance(delayMs: 60),
+              const SizedBox(height: Brand.s12),
+              _groupCard(quickLinks).entrance(delayMs: 120),
+              const SizedBox(height: Brand.s24),
+              SectionHeader(
+                title: _t(context, "Legal", "قانونی"),
+              ).entrance(delayMs: 180),
+              const SizedBox(height: Brand.s12),
+              _groupCard(legal).entrance(delayMs: 240),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-class _AccountCard extends StatelessWidget {
-  static const Color _card = Color(0xFF0A3C30);
-  static const Color _accent = Color(0xFFdfa273);
-
-  final bool isUrdu;
-  final AuthProvider auth;
-  final VoidCallback onLogin;
-  final VoidCallback onSignup;
-
-  const _AccountCard({
-    required this.isUrdu,
-    required this.auth,
-    required this.onLogin,
-    required this.onSignup,
-  });
-
-  String _t(String en, String ur) => isUrdu ? ur : en;
-
-  @override
-  Widget build(BuildContext context) {
-    final user = auth.user;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _accent.withOpacity(0.22)),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-            color: Colors.black.withOpacity(0.18),
-          ),
-        ],
-      ),
+  Widget _headerCard(BuildContext context, bool isUrdu) {
+    return BrandCard(
+      gold: true,
       child: Row(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: _accent.withOpacity(0.14),
-              shape: BoxShape.circle,
-              border: Border.all(color: _accent.withOpacity(0.35)),
+              gradient: Brand.goldGradient,
+              borderRadius: BorderRadius.circular(Brand.rMd),
+              boxShadow: Brand.goldGlow,
             ),
-            child: Icon(
-              auth.isLoggedIn ? Icons.verified_user_outlined : Icons.person_outline,
-              color: _accent,
-              size: 28,
-            ),
+            child: const Icon(Icons.menu, size: 24, color: Color(0xFF1A1207)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: Brand.s16),
           Expanded(
             child: Column(
               crossAxisAlignment:
-              isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Text(
-                  auth.isLoggedIn
-                      ? user?.fullName ?? _t("My Account", "میرا اکاؤنٹ")
-                      : _t("Guest User", "گیسٹ صارف"),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: _accent,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  _t(context, "More", "مزید"),
+                  style: Brand.display(22, color: Brand.gold),
                   textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: Brand.s4),
                 Text(
-                  auth.isLoggedIn
-                      ? "${user?.email ?? ""}\n${user?.phone ?? ""}"
-                      : _t(
-                    "Login or create an account to continue",
-                    "جاری رکھنے کے لیے لاگ اِن یا اکاؤنٹ بنائیں",
+                  _t(
+                    context,
+                    "Shop, verify your item, tools & legal information",
+                    "شاپ، تصدیق، ٹولز اور قانونی معلومات",
                   ),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w600,
-                    height: 1.35,
-                  ),
+                  style: Brand.sans(13, color: Brand.textMuted, height: 1.35),
                   textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                 ),
-                if (!auth.isLoggedIn) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: onLogin,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: _accent,
-                            side: BorderSide(color: _accent.withOpacity(0.55)),
-                          ),
-                          child: Text(
-                            _t("Login", "لاگ اِن"),
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: onSignup,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _accent,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text(
-                            _t("Signup", "سائن اپ"),
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _groupCard(List<_MoreItem> items) {
+    return BrandCard(
+      padding: EdgeInsets.zero,
+      radius: Brand.rLg,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Brand.rLg),
+        child: Column(
+          children: [
+            for (int i = 0; i < items.length; i++) ...[
+              _MoreTile(item: items[i]),
+              if (i != items.length - 1)
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: Brand.s16,
+                  endIndent: Brand.s16,
+                  color: Brand.hairlineSoft,
+                ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -519,56 +274,62 @@ class _MoreTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUrdu = context.watch<AppSettings>().isUrdu;
 
-    return InkWell(
-      onTap: item.onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _accent.withOpacity(0.25)),
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: item.onTap,
+        splashColor: Brand.gold.withValues(alpha: 0.12),
+        highlightColor: Brand.gold.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Brand.s16,
+            vertical: Brand.s16,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Brand.gold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(Brand.rSm),
+                  border: Border.all(color: Brand.gold.withValues(alpha: 0.30)),
+                ),
+                child: Icon(item.icon, size: 22, color: Brand.gold),
               ),
-              child: Icon(item.icon, size: 22, color: _accent),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment:
-                isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: _accent,
+              const SizedBox(width: Brand.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: isUrdu
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: Brand.sans(
+                        15.5,
+                        color: Brand.text,
+                        weight: FontWeight.w700,
+                      ),
+                      textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                     ),
-                    textAlign: isUrdu ? TextAlign.right : TextAlign.left,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w600,
-                      height: 1.3,
+                    const SizedBox(height: Brand.s4),
+                    Text(
+                      item.subtitle,
+                      style:
+                          Brand.sans(12.5, color: Brand.textMuted, height: 1.35),
+                      textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                     ),
-                    textAlign: isUrdu ? TextAlign.right : TextAlign.left,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Icon(
-              Icons.chevron_right,
-              color: _accent.withOpacity(0.8),
-            ),
-          ],
+              const SizedBox(width: Brand.s12),
+              Icon(
+                Icons.chevron_right,
+                color: _accent.withValues(alpha: 0.85),
+              ),
+            ],
+          ),
         ),
       ),
     );

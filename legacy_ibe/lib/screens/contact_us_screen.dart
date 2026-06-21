@@ -5,6 +5,10 @@ import "package:provider/provider.dart";
 import "package:url_launcher/url_launcher.dart";
 
 import "../providers/app_settings.dart";
+import "../providers/shop_provider.dart";
+import "../providers/site_config_provider.dart";
+import "../theme/brand.dart";
+import "../widgets/brand_kit.dart";
 
 class ContactUsScreen extends StatelessWidget {
   const ContactUsScreen({super.key});
@@ -75,11 +79,13 @@ class ContactUsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUrdu = context.watch<AppSettings>().isUrdu;
 
-    const address =
-        "Shop No 1, Ground Floor, Trade Center, F-7 Markaz Block 20-B F-7, Islamabad, 44210";
-    const phone = "+92-340-2786222";
-    const whatsapp = "+923409786111";
-    const email = "thelegacyjewellers@gmail.com";
+    // Admin-managed contact details (GET /api/app-config). Falls back to the
+    // built-in defaults when offline / before the first fetch.
+    final config = context.watch<SiteConfigProvider>().config;
+    final address = config.contactAddress;
+    final phone = config.contactPhone;
+    final whatsapp = config.contactWhatsapp;
+    final email = config.contactEmail;
 
     final mapsUri = Uri.parse(
       "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}",
@@ -104,62 +110,44 @@ class ContactUsScreen extends StatelessWidget {
       backgroundColor: _bg,
 
       // ✅ NO AppBar (MoreScreen also has no appbar)
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
-          children: [
+      body: BrandBackground(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+            children: [
             // Header card (matching About Us style)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _accent.withOpacity(0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                    color: Colors.black.withOpacity(0.18),
-                  ),
-                ],
-              ),
+            BrandCard(
+              gold: true,
               child: Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _accent.withOpacity(0.25)),
+                      gradient: Brand.goldGradient,
+                      borderRadius: BorderRadius.circular(Brand.rMd),
+                      boxShadow: Brand.goldGlow,
                     ),
-                    child: const Icon(Icons.support_agent, size: 22, color: _accent),
+                    child: const Icon(Icons.support_agent, size: 24, color: Color(0xFF1A1207)),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: Brand.s12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                       children: [
                         Text(
                           _t(context, "Contact Us", "ہم سے رابطہ"),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: _accent,
-                          ),
+                          style: Brand.display(20, color: Brand.gold, weight: FontWeight.w700),
                           textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           _t(
                             context,
                             "Call, WhatsApp or email us anytime",
                             "کال، واٹس ایپ یا ای میل کے ذریعے رابطہ کریں",
                           ),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600,
-                            height: 1.3,
-                          ),
+                          style: Brand.sans(12.5, color: Brand.textMuted, weight: FontWeight.w500, height: 1.3),
                           textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                         ),
                       ],
@@ -167,7 +155,7 @@ class ContactUsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            ).entrance(),
 
             const SizedBox(height: 12),
 
@@ -213,24 +201,20 @@ class ContactUsScreen extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
+            ).entrance(delayMs: 80),
+
+            const SizedBox(height: 14),
+
+            SectionHeader(
+              eyebrow: _t(context, "Reach us", "رابطہ"),
+              title: _t(context, "Get in touch", "ہم سے رابطہ کریں"),
+            ).entrance(delayMs: 120),
 
             const SizedBox(height: 12),
 
             // Details list card
-            Container(
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _accent.withOpacity(0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                    color: Colors.black.withOpacity(0.18),
-                  ),
-                ],
-              ),
+            BrandCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   _InfoTile(
@@ -252,7 +236,7 @@ class ContactUsScreen extends StatelessWidget {
                     ),
                     accentColor: _accent,
                   ),
-                  Divider(height: 1, thickness: 1, color: Colors.white.withOpacity(0.12)),
+                  Divider(height: 1, thickness: 1, color: Brand.hairlineSoft, indent: 14, endIndent: 14),
                   _InfoTile(
                     icon: Icons.phone_in_talk,
                     title: _t(context, "Phone Number", "فون نمبر"),
@@ -272,7 +256,7 @@ class ContactUsScreen extends StatelessWidget {
                     ),
                     accentColor: _accent,
                   ),
-                  Divider(height: 1, thickness: 1, color: Colors.white.withOpacity(0.12)),
+                  Divider(height: 1, thickness: 1, color: Brand.hairlineSoft, indent: 14, endIndent: 14),
                   _InfoTile(
                     icon: Icons.chat,
                     title: _t(context, "WhatsApp", "واٹس ایپ"),
@@ -292,7 +276,7 @@ class ContactUsScreen extends StatelessWidget {
                     ),
                     accentColor: _accent,
                   ),
-                  Divider(height: 1, thickness: 1, color: Colors.white.withOpacity(0.12)),
+                  Divider(height: 1, thickness: 1, color: Brand.hairlineSoft, indent: 14, endIndent: 14),
                   _InfoTile(
                     icon: Icons.alternate_email,
                     title: _t(context, "Email Address", "ای میل"),
@@ -314,81 +298,74 @@ class ContactUsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            ).entrance(delayMs: 140),
+
+            const SizedBox(height: 16),
+
+            SectionHeader(
+              eyebrow: _t(context, "Inquiry", "استفسار"),
+              title: _t(context, "Send us a message", "ہمیں پیغام بھیجیں"),
+            ).entrance(delayMs: 160),
+
+            const SizedBox(height: 12),
+
+            // Send us a message (saves to the website's contacts inbox)
+            _ContactForm(isUrdu: isUrdu, card: _card, accent: _accent).entrance(delayMs: 200),
+
+            const SizedBox(height: 16),
+
+            SectionHeader(
+              eyebrow: _t(context, "When we're open", "ہمارے اوقات"),
+              title: _t(context, "Business Hours", "اوقاتِ کار"),
+            ).entrance(delayMs: 240),
 
             const SizedBox(height: 12),
 
             // Opening hours card
-            Container(
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _accent.withOpacity(0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                    color: Colors.black.withOpacity(0.18),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            BrandCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _HoursRow(day: _t(context, "Mon–Thu", "پیر–جمعرات"), time: config.hoursMonThu, isUrdu: isUrdu),
+                  const SizedBox(height: 8),
+                  _HoursRow(day: _t(context, "Fri", "جمعہ"), time: config.hoursFri, isUrdu: isUrdu),
+                  const SizedBox(height: 8),
+                  _HoursRow(day: _t(context, "Sat", "ہفتہ"), time: config.hoursSat, isUrdu: isUrdu),
+                  const SizedBox(height: 8),
+                  _HoursRow(day: _t(context, "Sun", "اتوار"), time: config.hoursSun, isUrdu: isUrdu),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(Brand.s12),
+                    decoration: BoxDecoration(
+                      color: Brand.gold.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(Brand.rSm),
+                      border: Border.all(color: Brand.hairline),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: _accent.withOpacity(0.25)),
-                          ),
-                          child: const Icon(Icons.access_time, size: 22, color: _accent),
-                        ),
-                        const SizedBox(width: 12),
+                        const Icon(Icons.bolt, size: 18, color: Brand.gold),
+                        const SizedBox(width: Brand.s8),
                         Expanded(
                           child: Text(
-                            _t(context, "Opening Hours", "اوقاتِ کار"),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: _accent,
+                            _t(
+                              context,
+                              "Tip: For urgent assistance, WhatsApp is the fastest option.",
+                              "ٹپ: فوری مدد کے لیے واٹس ایپ سب سے تیز ذریعہ ہے۔",
                             ),
+                            style: Brand.sans(12, color: Brand.textMuted, weight: FontWeight.w500, height: 1.35),
                             textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _HoursRow(day: _t(context, "Mon–Thu", "پیر–جمعرات"), time: "10AM - 8PM", isUrdu: isUrdu),
-                    const SizedBox(height: 8),
-                    _HoursRow(day: _t(context, "Fri", "جمعہ"), time: "3PM - 9:30PM", isUrdu: isUrdu),
-                    const SizedBox(height: 8),
-                    _HoursRow(day: _t(context, "Sat", "ہفتہ"), time: "12PM - 9:30PM", isUrdu: isUrdu),
-                    const SizedBox(height: 8),
-                    _HoursRow(day: _t(context, "Sun", "اتوار"), time: "2PM - 9:30PM", isUrdu: isUrdu),
-                    const SizedBox(height: 10),
-                    Text(
-                      _t(
-                        context,
-                        "Tip: For urgent assistance, WhatsApp is the fastest option.",
-                        "ٹپ: فوری مدد کے لیے واٹس ایپ سب سے تیز ذریعہ ہے۔",
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white70,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: isUrdu ? TextAlign.right : TextAlign.left,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ).entrance(delayMs: 280),
+            ],
+          ),
         ),
       ),
 
@@ -444,37 +421,40 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: const Color(0xFF0A3C30),
-          border: Border.all(color: accentColor.withOpacity(0.22)),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-              color: Colors.black.withOpacity(0.15),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: accentColor),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: accentColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Brand.rMd),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Brand.rMd),
+            gradient: Brand.cardGradient,
+            border: Border.all(color: Brand.hairline),
+            boxShadow: Brand.cardShadow,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(Brand.rSm),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.30)),
+                ),
+                child: Icon(icon, color: accentColor, size: 20),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: Brand.label(11, color: accentColor, spacing: 0.4),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -516,53 +496,46 @@ class _InfoTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: accentColor.withOpacity(0.25)),
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(Brand.rMd),
+                border: Border.all(color: accentColor.withValues(alpha: 0.30)),
               ),
               child: Icon(icon, size: 22, color: accentColor),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: Brand.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: accentColor,
-                    ),
+                    style: Brand.label(11, color: Brand.textMuted, spacing: 1.0),
                     textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w600,
-                      height: 1.3,
-                    ),
+                    style: Brand.sans(14.5, color: Brand.text, weight: FontWeight.w600, height: 1.3),
                     textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white.withOpacity(0.35)),
+                            foregroundColor: Brand.text,
+                            side: BorderSide(color: Brand.hairline),
                             backgroundColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
                           ),
                           onPressed: onSecondary,
                           child: Text(
                             secondaryLabel,
-                            style: const TextStyle(fontWeight: FontWeight.w900),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                       ),
@@ -571,13 +544,13 @@ class _InfoTile extends StatelessWidget {
                         child: FilledButton(
                           style: FilledButton.styleFrom(
                             backgroundColor: accentColor,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            foregroundColor: const Color(0xFF1A1207),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
                           ),
                           onPressed: onPrimary,
                           child: Text(
                             primaryLabel,
-                            style: const TextStyle(fontWeight: FontWeight.w900),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                       ),
@@ -589,11 +562,243 @@ class _InfoTile extends StatelessWidget {
             const SizedBox(width: 8),
             Icon(
               Icons.chevron_right,
-              color: accentColor.withOpacity(0.8),
+              color: accentColor.withValues(alpha: 0.8),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/* ----------------------- Contact form ----------------------- */
+
+class _ContactForm extends StatefulWidget {
+  final bool isUrdu;
+  final Color card;
+  final Color accent;
+
+  const _ContactForm({
+    required this.isUrdu,
+    required this.card,
+    required this.accent,
+  });
+
+  @override
+  State<_ContactForm> createState() => _ContactFormState();
+}
+
+class _ContactFormState extends State<_ContactForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _subject = TextEditingController();
+  final _message = TextEditingController();
+
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _subject.dispose();
+    _message.dispose();
+    super.dispose();
+  }
+
+  String _t(String en, String ur) => widget.isUrdu ? ur : en;
+
+  InputDecoration _dec(String label, {String? hint}) => InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: TextStyle(color: widget.accent.withOpacity(0.85)),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.06),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.accent.withOpacity(0.45)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.accent),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.accent.withOpacity(0.45)),
+        ),
+      );
+
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      final api = context.read<ShopProvider>().api;
+      await api.submitContact(
+        name: _name.text,
+        email: _email.text,
+        phone: _phone.text,
+        subject: _subject.text,
+        message: _message.text,
+      );
+      if (!mounted) return;
+      _name.clear();
+      _email.clear();
+      _phone.clear();
+      _subject.clear();
+      _message.clear();
+      _formKey.currentState?.reset();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: widget.card,
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            _t("Message sent. Our team will get back to you soon.",
+                "پیغام بھیج دیا گیا۔ ہماری ٹیم جلد رابطہ کرے گی۔"),
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = _t(
+            "Could not send your message. Please check your connection and try again.",
+            "پیغام نہیں بھیجا جا سکا۔ براہِ کرم اپنا انٹرنیٹ کنکشن چیک کر کے دوبارہ کوشش کریں۔",
+          ));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isUrdu = widget.isUrdu;
+    final accent = widget.accent;
+
+    return BrandCard(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(Brand.rMd),
+                      border: Border.all(color: accent.withValues(alpha: 0.30)),
+                    ),
+                    child: Icon(Icons.send_outlined, size: 22, color: accent),
+                  ),
+                  const SizedBox(width: Brand.s12),
+                  Expanded(
+                    child: Text(
+                      _t("Send us a message", "ہمیں پیغام بھیجیں"),
+                      style: Brand.display(17, color: accent, weight: FontWeight.w700),
+                      textAlign: isUrdu ? TextAlign.right : TextAlign.left,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _name,
+                style: const TextStyle(color: Colors.white),
+                textCapitalization: TextCapitalization.words,
+                decoration: _dec(_t("Your name", "آپ کا نام")),
+                validator: (v) => (v == null || v.trim().length < 2)
+                    ? _t("Please enter your name", "براہِ کرم اپنا نام درج کریں")
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _email,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: TextInputType.emailAddress,
+                decoration: _dec(_t("Email", "ای میل")),
+                validator: (v) {
+                  final s = (v ?? "").trim();
+                  if (s.isEmpty) {
+                    return _t("Please enter your email",
+                        "براہِ کرم اپنی ای میل درج کریں");
+                  }
+                  if (!s.contains("@") || !s.contains(".")) {
+                    return _t("Please enter a valid email",
+                        "براہِ کرم درست ای میل درج کریں");
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phone,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: TextInputType.phone,
+                decoration: _dec(_t("Phone (optional)", "فون (اختیاری)")),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _subject,
+                style: const TextStyle(color: Colors.white),
+                decoration: _dec(_t("Subject (optional)", "موضوع (اختیاری)")),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _message,
+                style: const TextStyle(color: Colors.white),
+                maxLines: 4,
+                decoration: _dec(_t("Message", "پیغام")),
+                validator: (v) => (v == null || v.trim().length < 5)
+                    ? _t("Please enter your message",
+                        "براہِ کرم اپنا پیغام درج کریں")
+                    : null,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: Brand.sans(13, color: Brand.down, weight: FontWeight.w600, height: 1.3),
+                ),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: const Color(0xFF1A1207),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  onPressed: _busy ? null : _submit,
+                  icon: _busy
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Color(0xFF1A1207)),
+                        )
+                      : const Icon(Icons.send),
+                  label: Text(
+                    _t("Send message", "پیغام بھیجیں"),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
     );
   }
 }
@@ -612,25 +817,20 @@ class _HoursRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
       children: [
         Expanded(
           child: Text(
             day,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: Colors.white.withOpacity(0.92),
-            ),
+            style: Brand.sans(13.5, color: Brand.textMuted, weight: FontWeight.w600),
             textAlign: isUrdu ? TextAlign.right : TextAlign.left,
           ),
         ),
         const SizedBox(width: 10),
         Text(
           time,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-          ),
-          textAlign: TextAlign.right,
+          style: Brand.number(13.5, color: Brand.text, weight: FontWeight.w700, height: 1.3),
+          textAlign: isUrdu ? TextAlign.left : TextAlign.right,
         ),
       ],
     );

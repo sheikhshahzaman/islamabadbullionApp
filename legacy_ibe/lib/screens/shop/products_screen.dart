@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:intl/intl.dart";
 import "package:provider/provider.dart";
@@ -5,6 +7,8 @@ import "package:provider/provider.dart";
 import "../../models/shop_models.dart";
 import "../../providers/cart_provider.dart";
 import "../../providers/shop_provider.dart";
+import "../../theme/brand.dart";
+import "../../widgets/brand_kit.dart";
 import "cart_screen.dart";
 
 class ProductsScreen extends StatefulWidget {
@@ -31,59 +35,131 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final cart = context.watch<CartProvider>();
 
     return Scaffold(
+      backgroundColor: Brand.teal,
       appBar: AppBar(
-        title: const Text("Shop Gold & Silver"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          "Shop Gold & Silver",
+          style: Brand.display(20, weight: FontWeight.w700),
+        ),
         actions: [_CartButton(count: cart.itemCount)],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await shop.load(refresh: true);
-          if (context.mounted) {
-            context.read<CartProvider>().refreshProducts(shop.products);
-          }
-        },
-        child: _body(shop, cart),
+      body: BrandBackground(
+        child: RefreshIndicator(
+          color: Brand.gold,
+          backgroundColor: Brand.cardHigh,
+          onRefresh: () async {
+            await shop.load(refresh: true);
+            if (context.mounted) {
+              context.read<CartProvider>().refreshProducts(shop.products);
+            }
+          },
+          child: _body(shop, cart),
+        ),
       ),
     );
   }
 
   Widget _body(ShopProvider shop, CartProvider cart) {
     if (shop.loading && shop.products.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return _loadingSkeleton(shop);
     }
 
     if (shop.error != null && shop.products.isEmpty) {
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: Brand.s24),
         children: [
           const SizedBox(height: 120),
-          Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade500),
-          const SizedBox(height: 12),
-          Center(child: Text(shop.error!)),
-          const SizedBox(height: 12),
+          Icon(Icons.cloud_off, size: 52, color: Brand.gold.withValues(alpha: 0.7))
+              .entrance(),
+          const SizedBox(height: Brand.s16),
+          Center(
+            child: Text(
+              shop.error!,
+              textAlign: TextAlign.center,
+              style: Brand.sans(14, color: Brand.textMuted),
+            ),
+          ).entrance(delayMs: 50),
+          const SizedBox(height: Brand.s16),
           Center(
             child: FilledButton(
+              style: _goldButtonStyle(),
               onPressed: () => shop.load(refresh: true),
               child: const Text("Retry"),
             ),
-          ),
+          ).entrance(delayMs: 80),
         ],
       );
     }
 
+    if (shop.products.isEmpty) {
+      return _emptyState();
+    }
+
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(child: _categoryChips(shop)),
         if (shop.loading)
           const SliverToBoxAdapter(
-            child: LinearProgressIndicator(minHeight: 2),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: Brand.s12),
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                color: Brand.gold,
+                backgroundColor: Colors.transparent,
+              ),
+            ),
           ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+          padding: const EdgeInsets.fromLTRB(Brand.s12, Brand.s4, Brand.s12, Brand.s24),
           sliver: SliverList.separated(
             itemCount: shop.products.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: Brand.s12),
+            itemBuilder: (context, index) => _ProductCard(
+              product: shop.products[index],
+              money: _money,
+            ).entrance(delayMs: math.min(index, 8) * 50),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _emptyState() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: Brand.s24),
+      children: [
+        const SizedBox(height: 140),
+        Icon(Icons.diamond_outlined, size: 56, color: Brand.gold.withValues(alpha: 0.7))
+            .entrance(),
+        const SizedBox(height: Brand.s16),
+        Center(
+          child: Text(
+            "No products available yet",
+            textAlign: TextAlign.center,
+            style: Brand.sans(15, color: Brand.textMuted),
+          ),
+        ).entrance(delayMs: 70),
+      ],
+    );
+  }
+
+  Widget _loadingSkeleton(ShopProvider shop) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: _categoryChips(shop)),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(Brand.s12, Brand.s4, Brand.s12, Brand.s24),
+          sliver: SliverList.separated(
+            itemCount: 7,
+            separatorBuilder: (_, _) => const SizedBox(height: Brand.s12),
             itemBuilder: (context, index) =>
-                _ProductCard(product: shop.products[index], money: _money),
+                const _SkeletonCard().entrance(delayMs: 0),
           ),
         ),
       ],
@@ -93,27 +169,85 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget _categoryChips(ShopProvider shop) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      padding: const EdgeInsets.fromLTRB(Brand.s12, Brand.s12, Brand.s12, Brand.s8),
       child: Row(
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: const Text("All"),
+            padding: const EdgeInsets.only(right: Brand.s8),
+            child: _CategoryChip(
+              label: "All",
               selected: shop.selectedCategorySlug == null,
-              onSelected: (_) => shop.selectCategory(null),
+              onTap: () => shop.selectCategory(null),
             ),
           ),
           for (final c in shop.categories)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(c.name),
+              padding: const EdgeInsets.only(right: Brand.s8),
+              child: _CategoryChip(
+                label: c.name,
                 selected: shop.selectedCategorySlug == c.slug,
-                onSelected: (_) => shop.selectCategory(c.slug),
+                onTap: () => shop.selectCategory(c.slug),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+ButtonStyle _goldButtonStyle() => FilledButton.styleFrom(
+      backgroundColor: Brand.gold,
+      foregroundColor: const Color(0xFF1A1207),
+      disabledBackgroundColor: Brand.gold.withValues(alpha: 0.25),
+      disabledForegroundColor: Brand.text.withValues(alpha: 0.4),
+      textStyle: Brand.sans(13, weight: FontWeight.w800),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Brand.rSm),
+      ),
+    );
+
+/// Gold pill chip for category filtering. Selected = gold fill + dark text;
+/// unselected = gold hairline outline.
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _CategoryChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: Brand.base,
+          curve: Brand.easeOut,
+          constraints: const BoxConstraints(minHeight: 44),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: Brand.s16),
+          decoration: BoxDecoration(
+            gradient: selected ? Brand.goldGradient : null,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? Colors.transparent : Brand.hairline,
+            ),
+            boxShadow: selected ? Brand.goldGlow : null,
+          ),
+          child: Text(
+            label,
+            style: Brand.sans(
+              13,
+              weight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? const Color(0xFF1A1207) : Brand.textMuted,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -132,8 +266,10 @@ class _CartButton extends StatelessWidget {
       ),
       icon: Badge(
         isLabelVisible: count > 0,
+        backgroundColor: Brand.gold,
+        textColor: const Color(0xFF1A1207),
         label: Text("$count"),
-        child: const Icon(Icons.shopping_cart_outlined),
+        child: const Icon(Icons.shopping_cart_outlined, color: Brand.text),
       ),
     );
   }
@@ -147,108 +283,147 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final price = product.currentPrice;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 64,
-                height: 64,
-                child: product.imageUrl != null
-                    ? Image.network(
-                        product.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _placeholder(theme),
-                      )
-                    : _placeholder(theme),
+    return BrandCard(
+      padding: const EdgeInsets.all(Brand.s12),
+      radius: Brand.rMd,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Brand.rSm),
+            child: Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Brand.rSm),
+                border: Border.all(color: Brand.hairlineSoft),
               ),
+              child: product.imageUrl != null
+                  ? Image.network(
+                      product.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _placeholder(),
+                    )
+                  : _placeholder(),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(width: Brand.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: Brand.sans(15, weight: FontWeight.w600, color: Brand.text),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (product.weight.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      product.weight,
+                      style: Brand.sans(12, color: Brand.textMuted),
+                    ),
                   ),
-                  if (product.weight.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                const SizedBox(height: Brand.s4),
+                Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        product.weight,
-                        style: theme.textTheme.bodySmall,
+                        price != null
+                            ? "Rs ${money.format(price)}"
+                            : "Price on request",
+                        style: price != null
+                            ? Brand.number(17, color: Brand.gold)
+                            : Brand.sans(13, color: Brand.textMuted, weight: FontWeight.w600),
                       ),
                     ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
+                    if (product.discountLabel != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Brand.gold.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Brand.hairline),
+                        ),
                         child: Text(
-                          price != null
-                              ? "Rs ${money.format(price)}"
-                              : "Price on request",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          product.discountLabel!,
+                          style: Brand.label(10, color: Brand.goldBright, spacing: 0.4),
                         ),
                       ),
-                      if (product.discountLabel != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.tertiaryContainer,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            product.discountLabel!,
-                            style: theme.textTheme.labelSmall,
-                          ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: Brand.s8),
+          FilledButton.icon(
+            style: _goldButtonStyle().copyWith(
+              minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+            ),
+            onPressed: price == null
+                ? null
+                : () {
+                    context.read<CartProvider>().add(product);
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        SnackBar(
+                          content: Text("${product.name} added to cart"),
+                          duration: const Duration(seconds: 1),
                         ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: price == null
-                  ? null
-                  : () {
-                      context.read<CartProvider>().add(product);
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(
-                          SnackBar(
-                            content: Text("${product.name} added to cart"),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                    },
-              icon: const Icon(Icons.add_shopping_cart, size: 18),
-              label: const Text("Add"),
-            ),
-          ],
-        ),
+                      );
+                  },
+            icon: const Icon(Icons.add_shopping_cart, size: 18),
+            label: const Text("Add"),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _placeholder(ThemeData theme) => Container(
-        color: theme.colorScheme.surfaceContainerHighest,
+  Widget _placeholder() => Container(
+        decoration: BoxDecoration(gradient: Brand.cardGradient),
         child: Icon(
           product.metal == "silver" ? Icons.circle_outlined : Icons.toll,
-          color: theme.colorScheme.outline,
+          color: Brand.gold.withValues(alpha: 0.6),
         ),
       );
+}
+
+/// Shimmer skeleton mirroring the [_ProductCard] layout for the loading state.
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BrandCard(
+      padding: const EdgeInsets.all(Brand.s12),
+      radius: Brand.rMd,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const ShimmerBox(width: 68, height: 68, radius: Brand.rSm),
+          const SizedBox(width: Brand.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                ShimmerBox(width: double.infinity, height: 14),
+                SizedBox(height: Brand.s8),
+                ShimmerBox(width: 90, height: 11),
+                SizedBox(height: Brand.s12),
+                ShimmerBox(width: 120, height: 16),
+              ],
+            ),
+          ),
+          const SizedBox(width: Brand.s8),
+          const ShimmerBox(width: 64, height: 44, radius: Brand.rSm),
+        ],
+      ),
+    );
+  }
 }

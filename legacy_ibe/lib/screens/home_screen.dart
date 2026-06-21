@@ -8,6 +8,8 @@ import "../providers/silver_note_provider.dart";
 import "../widgets/error_view.dart";
 import "../widgets/animated_price_text.dart";
 import "../widgets/currency_utils.dart";
+import "../widgets/brand_kit.dart";
+import "../theme/brand.dart";
 import "../l10n/app_localizations.dart";
 import "../utils/time_utils.dart";
 import "../models/metal_price.dart";
@@ -299,32 +301,33 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 6),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: _bg,
-        unselectedItemColor: Colors.white70,
-        selectedItemColor: Colors.white,
+      bottomNavigationBar: PremiumBottomNav(
         currentIndex: _navIndex,
-        type: BottomNavigationBarType.fixed,
         onTap: _onBottomNavTap,
         items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.contact_mail_outlined),
+          BrandNavItem(
+            icon: Icons.call_outlined,
+            activeIcon: Icons.call,
             label: _navLabel(0, settings.isUrdu),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.shopping_cart_outlined),
+          BrandNavItem(
+            icon: Icons.shopping_bag_outlined,
+            activeIcon: Icons.shopping_bag,
             label: _navLabel(1, settings.isUrdu),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.show_chart),
+          BrandNavItem(
+            icon: Icons.show_chart_rounded,
+            activeIcon: Icons.insights_rounded,
             label: _navLabel(2, settings.isUrdu),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.sell_outlined),
+          BrandNavItem(
+            icon: Icons.sell_outlined,
+            activeIcon: Icons.sell,
             label: _navLabel(3, settings.isUrdu),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.more_horiz),
+          BrandNavItem(
+            icon: Icons.grid_view_outlined,
+            activeIcon: Icons.grid_view_rounded,
             label: _navLabel(4, settings.isUrdu),
           ),
         ],
@@ -781,7 +784,8 @@ class _SpotBody extends StatelessWidget {
     final silverAskUsd =
     usdSilver == null ? null : usdSource.toUsdOrNull(usdSilver.sell.perOz);
 
-    return RefreshIndicator(
+    return BrandBackground(
+      child: RefreshIndicator(
       backgroundColor: _bg,
       color: Colors.white,
       onRefresh: () async {
@@ -818,7 +822,7 @@ class _SpotBody extends StatelessWidget {
                   silverAskUsd == null),
               updatedTime: updatedPkt,
             ),
-          ),
+          ).entrance(delayMs: 80),
 
           const SizedBox(height: 14),
 
@@ -837,7 +841,7 @@ class _SpotBody extends StatelessWidget {
               accentColor: accentColor,
               updatedTime: updatedPkt,
             ),
-          ),
+          ).entrance(delayMs: 160),
 
           const SizedBox(height: 14),
 
@@ -854,7 +858,7 @@ class _SpotBody extends StatelessWidget {
               accentColor: accentColor,
               updatedTime: updatedPkt,
             ),
-          ),
+          ).entrance(delayMs: 240),
 
           if (silverNoteText.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -862,10 +866,11 @@ class _SpotBody extends StatelessWidget {
               text: silverNoteText.trim(),
               isUrdu: settings.isUrdu,
               accentColor: accentColor,
-            ),
+            ).entrance(delayMs: 300),
           ],
         ],
       ),
+    ),
     );
   }
 }
@@ -1239,12 +1244,22 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w900,
-        color: accentColor,
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 22,
+          decoration: BoxDecoration(
+            gradient: Brand.goldGradient,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: Brand.display(19, weight: FontWeight.w700, color: accentColor),
+        ),
+      ],
     );
   }
 }

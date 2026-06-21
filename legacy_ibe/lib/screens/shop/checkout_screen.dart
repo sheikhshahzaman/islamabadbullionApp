@@ -4,7 +4,6 @@ import "package:intl/intl.dart";
 import "package:provider/provider.dart";
 
 import "../../models/shop_models.dart";
-import "../../providers/cart_provider.dart";
 import "../../providers/shop_provider.dart";
 import "order_confirmation_screen.dart";
 
@@ -12,8 +11,22 @@ import "order_confirmation_screen.dart";
 ///   1. customer details (creates the order server-side)
 ///   2. payment method + account details
 ///   3. proof screenshot upload
+///
+/// Reused by both the product cart and the Buy/Sell wizards: the caller
+/// supplies [onCreateOrder] (which actually creates the order once the
+/// customer's details are entered), an [estimatedTotal] to preview, and an
+/// optional [onOrderComplete] hook (e.g. to clear the cart).
 class CheckoutScreen extends StatefulWidget {
-  const CheckoutScreen({super.key});
+  final Future<CreatedOrder> Function(String name, String phone) onCreateOrder;
+  final double estimatedTotal;
+  final VoidCallback? onOrderComplete;
+
+  const CheckoutScreen({
+    super.key,
+    required this.onCreateOrder,
+    required this.estimatedTotal,
+    this.onOrderComplete,
+  });
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -51,8 +64,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _createOrder() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final cart = context.read<CartProvider>();
-    final api = context.read<ShopProvider>().api;
 
     setState(() {
       _busy = true;
@@ -60,10 +71,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final created = await api.createOrder(
-        customerName: _nameCtrl.text.trim(),
-        customerPhone: _phoneCtrl.text.trim(),
-        productQuantities: cart.productQuantities,
+      final created = await widget.onCreateOrder(
+        _nameCtrl.text.trim(),
+        _phoneCtrl.text.trim(),
       );
       setState(() {
         _created = created;
@@ -93,7 +103,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (created == null || proof == null || _method.isEmpty) return;
 
     final api = context.read<ShopProvider>().api;
-    final cart = context.read<CartProvider>();
 
     setState(() {
       _busy = true;
@@ -107,7 +116,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         proofImagePath: proof.path,
         referenceNumber: _referenceCtrl.text,
       );
-      cart.clear();
+      widget.onOrderComplete?.call();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -167,14 +176,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
 
   Widget _detailsStep() {
-    final cart = context.watch<CartProvider>();
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _errorBox(),
-          Text("Order total (estimated): Rs ${_money.format(cart.subtotal)}"),
+          Text(
+              "Order total (estimated): Rs ${_money.format(widget.estimatedTotal)}"),
           const SizedBox(height: 12),
           TextFormField(
             controller: _nameCtrl,

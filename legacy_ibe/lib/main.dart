@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:legacy_ibe/providers/auth_provider.dart";
 import "package:legacy_ibe/providers/headlines_provider.dart";
 import "package:legacy_ibe/providers/silver_note_provider.dart";
 import "package:provider/provider.dart";
@@ -10,6 +9,7 @@ import "providers/app_settings.dart";
 import "providers/cart_provider.dart";
 import "providers/prices_provider.dart";
 import "providers/shop_provider.dart";
+import "providers/site_config_provider.dart";
 import "screens/splash_screen.dart";
 import "theme/app_theme.dart";
 import "l10n/app_localizations.dart";
@@ -28,7 +28,6 @@ class MetalPricesApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppSettings()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()..loadSession()),
         ChangeNotifierProvider(create: (_) => HeadlinesProvider()),
         ChangeNotifierProxyProvider<AppSettings, PricesProvider>(
           create: (_) => PricesProvider(),
@@ -39,6 +38,7 @@ class MetalPricesApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => ShopProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => SiteConfigProvider()..load()),
       ],
       child: Consumer<AppSettings>(
         builder: (context, settings, _) {

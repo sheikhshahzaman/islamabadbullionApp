@@ -50,6 +50,53 @@ class ShopApi {
     return CreatedOrder.fromJson(json);
   }
 
+  /// Creates a single-item Buy/Sell order priced by metal weight. The unit
+  /// price is recalculated server-side; the response carries the final total.
+  Future<CreatedOrder> createMetalOrder({
+    required String customerName,
+    required String customerPhone,
+    required String type, // buy | sell
+    required String metal, // gold | silver
+    String? karat,
+    required String unit,
+    required double quantity,
+  }) async {
+    final json = await _client.postJson(
+      _uri("/buy-sell-orders"),
+      body: {
+        "customer_name": customerName,
+        "customer_phone": customerPhone,
+        "type": type,
+        "metal": metal,
+        if (karat != null && karat.trim().isNotEmpty) "karat": karat.trim(),
+        "unit": unit,
+        "quantity": quantity,
+      },
+    );
+    return CreatedOrder.fromJson(json);
+  }
+
+  /// Sends a contact-form message to the website's contacts inbox.
+  Future<void> submitContact({
+    required String name,
+    required String email,
+    String? phone,
+    String? subject,
+    required String message,
+  }) async {
+    await _client.postJson(
+      _uri("/contact"),
+      body: {
+        "name": name.trim(),
+        "email": email.trim(),
+        if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
+        if (subject != null && subject.trim().isNotEmpty)
+          "subject": subject.trim(),
+        "message": message.trim(),
+      },
+    );
+  }
+
   Future<CreatedOrder> fetchOrder(String orderNumber) async {
     final json = await _client.getJson(_uri("/orders/$orderNumber"));
     return CreatedOrder.fromJson(json);

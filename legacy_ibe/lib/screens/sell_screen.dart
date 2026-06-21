@@ -9,6 +9,10 @@ import "../widgets/currency_utils.dart";
 import "../l10n/app_localizations.dart";
 import "../utils/time_utils.dart";
 import "../widgets/error_view.dart";
+import "../providers/shop_provider.dart";
+import "shop/checkout_screen.dart";
+import "../theme/brand.dart";
+import "../widgets/brand_kit.dart";
 
 // Gold unit choices (keep gold logic same)
 enum SellUnit { gram, tola }
@@ -97,13 +101,76 @@ class _SellScreenState extends State<SellScreen> {
         _goldKarat ??= "24K";
       } else {
         _goldKarat = null;
-        _silverQty = SilverQty.gram1;
+        _silverQty = SilverQty.tola1; // default to a visible package
       }
     });
   }
 
   bool get _isGold => _metalCode == "XAU";
   bool get _isSilver => _metalCode == "XAG";
+
+  /// Maps the selected silver package to the canonical (unit, quantity) the
+  /// order API understands and re-prices server-side.
+  (String, double) _silverUnitSpec(SilverQty q) {
+    switch (q) {
+      case SilverQty.kg1:
+        return ("kg", 1);
+      case SilverQty.tola10:
+        return ("10_tola", 1);
+      case SilverQty.tola10Qr:
+        return ("10_tola_qr", 1);
+      case SilverQty.tola5:
+        return ("5_tola", 1);
+      case SilverQty.tola1:
+        return ("tola", 1);
+      case SilverQty.gram10:
+        return ("gram", 10);
+      case SilverQty.gram1:
+        return ("gram", 1);
+    }
+  }
+
+  /// The order spec for the current selection, or null if incomplete.
+  ({String metal, String? karat, String unit, double quantity})? _orderSpec() {
+    if (_isGold) {
+      if (_goldKarat == null || _weight <= 0) return null;
+      return (
+        metal: "gold",
+        karat: _goldKarat!.toLowerCase(), // 24K -> 24k
+        unit: _unit == SellUnit.gram ? "gram" : "tola",
+        quantity: _weight,
+      );
+    }
+    if (_isSilver) {
+      final (unit, qty) = _silverUnitSpec(_silverQty);
+      return (metal: "silver", karat: null, unit: unit, quantity: qty);
+    }
+    return null;
+  }
+
+  bool get _canPlaceOrder => _orderSpec() != null;
+
+  void _startCheckout(BuildContext context, double total) {
+    final spec = _orderSpec();
+    if (spec == null) return;
+    final api = context.read<ShopProvider>().api;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          estimatedTotal: total,
+          onCreateOrder: (name, phone) => api.createMetalOrder(
+            customerName: name,
+            customerPhone: phone,
+            type: "sell",
+            metal: spec.metal,
+            karat: spec.karat,
+            unit: spec.unit,
+            quantity: spec.quantity,
+          ),
+        ),
+      ),
+    );
+  }
 
   bool get _canContinueStep1 {
     if (_metalCode == null) return false;
@@ -249,27 +316,24 @@ class _SellScreenState extends State<SellScreen> {
     final loc = AppLocalizations.of(context);
 
     if (prices.isLoading) {
-      return Container(
-        color: _bg,
-        child: const Center(
+      return const BrandBackground(
+        child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(Brand.gold),
           ),
         ),
       );
     }
 
     if (prices.latest == null && prices.error != null) {
-      return Container(
-        color: _bg,
+      return BrandBackground(
         child: ErrorView(message: prices.error!, onRetry: () => prices.refresh()),
       );
     }
 
     final latest = prices.latest;
     if (latest == null) {
-      return Container(
-        color: _bg,
+      return BrandBackground(
         child: ErrorView(message: loc.t("no_data_yet"), onRetry: () => prices.refresh()),
       );
     }
@@ -291,67 +355,82 @@ class _SellScreenState extends State<SellScreen> {
         ? unitSell * (_weight <= 0 ? 0.0 : _weight)
         : unitSell;
 
-    return Container(
-      color: _bg,
+    return BrandBackground(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
         children: [
-          Card(
-            color: _card,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _t(
-                        settings,
-                        "Sell • Updated (PKT): $updatedPkt",
-                        "سیل • اپڈیٹ (پاکستان وقت): $updatedPkt",
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: _accent,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+          BrandCard(
+            padding: const EdgeInsets.all(Brand.s16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: Brand.goldGradient,
+                    borderRadius: BorderRadius.circular(Brand.rSm),
+                    boxShadow: Brand.goldGlow,
                   ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                    child: Text(
-                      latest.currency,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                  child: const Icon(Icons.sell_outlined, color: Color(0xFF1A1207)),
+                ),
+                const SizedBox(width: Brand.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _t(settings, "Sell", "سیل"),
+                        style: Brand.display(20, weight: FontWeight.w700),
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const LiveDot(color: Brand.gold, size: 7),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              _t(
+                                settings,
+                                "Updated (PKT): $updatedPkt",
+                                "اپڈیٹ (پاکستان وقت): $updatedPkt",
+                              ),
+                              style: Brand.label(10.5, color: Brand.textMuted, spacing: 0.4),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Brand.gold.withValues(alpha: 0.55)),
+                    color: Brand.gold.withValues(alpha: 0.12),
+                  ),
+                  child: Text(
+                    latest.currency,
+                    style: Brand.number(12, color: Brand.goldBright, weight: FontWeight.w800),
+                  ),
+                ),
+              ],
             ),
-          ),
+          ).entrance(),
           const SizedBox(height: 14),
-          Card(
-            color: _card,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _t(settings, "Easy Steps", "آسان مراحل"),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: _accent,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Theme(
+          BrandCard(
+            padding: const EdgeInsets.fromLTRB(Brand.s16, Brand.s16, Brand.s16, Brand.s12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  eyebrow: _t(settings, "Sell your bullion", "اپنی دھات بیچیں"),
+                  title: _t(settings, "Easy Steps", "آسان مراحل"),
+                ),
+                const SizedBox(height: 6),
+                Theme(
                     data: Theme.of(context).copyWith(
                       colorScheme: Theme.of(context).colorScheme.copyWith(
                         primary: _accent,
@@ -429,8 +508,7 @@ class _SellScreenState extends State<SellScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
+            ).entrance(delayMs: 80),
         ],
       ),
     );
@@ -440,31 +518,41 @@ class _SellScreenState extends State<SellScreen> {
     Widget metalCard({required String code, required IconData icon}) {
       final selected = _metalCode == code;
       return Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _setMetal(code),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected ? _accent : Colors.white.withOpacity(0.35),
-                width: selected ? 2 : 1,
-              ),
-              color: selected ? _accent : Colors.transparent,
-            ),
-            child: Column(
-              children: [
-                Icon(icon, size: 30, color: selected ? Colors.black : Colors.white),
-                const SizedBox(height: 8),
-                Text(
-                  _metalName(settings, code),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: selected ? Colors.black : Colors.white,
-                  ),
+        child: AnimatedScale(
+          scale: selected ? 1.0 : 0.98,
+          duration: Brand.base,
+          curve: Brand.easeOut,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Brand.rMd),
+            onTap: () => _setMetal(code),
+            child: AnimatedContainer(
+              duration: Brand.base,
+              curve: Brand.easeOut,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Brand.rMd),
+                border: Border.all(
+                  color: selected ? Colors.transparent : Brand.hairline,
+                  width: selected ? 2 : 1,
                 ),
-              ],
+                gradient: selected ? Brand.goldGradient : null,
+                color: selected ? null : Brand.cardHigh.withValues(alpha: 0.45),
+                boxShadow: selected ? Brand.goldGlow : null,
+              ),
+              child: Column(
+                children: [
+                  Icon(icon, size: 30, color: selected ? const Color(0xFF1A1207) : Brand.gold),
+                  const SizedBox(height: 8),
+                  Text(
+                    _metalName(settings, code),
+                    style: Brand.sans(
+                      15,
+                      weight: FontWeight.w800,
+                      color: selected ? const Color(0xFF1A1207) : Brand.text,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -482,13 +570,10 @@ class _SellScreenState extends State<SellScreen> {
           ],
         ),
         if (_isGold) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           Text(
             _t(settings, "Gold category", "سونے کی کیٹیگری"),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: _accent,
-            ),
+            style: Brand.label(11, color: Brand.gold, spacing: 1.2),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -521,16 +606,14 @@ class _SellScreenState extends State<SellScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             _t(
               settings,
               "Gold category pricing uses SELL per gram and converts to selected unit.",
               "گولڈ کیٹیگری قیمت SELL فی گرام سے لی جاتی ہے اور منتخب یونٹ میں کنورٹ ہوتی ہے۔",
             ),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: _accent.withOpacity(0.75),
-            ),
+            style: Brand.sans(12, color: Brand.textFaint, height: 1.4),
           ),
         ],
       ],
@@ -550,7 +633,7 @@ class _SellScreenState extends State<SellScreen> {
     if (!_canContinueStep1 || selectedMetal == null) {
       return Text(
         _t(settings, "Please complete Step 1 first.", "براہ کرم پہلے مرحلہ 1 مکمل کریں۔"),
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: _accent),
+        style: Brand.sans(14, color: Brand.textMuted),
       );
     }
 
@@ -563,29 +646,31 @@ class _SellScreenState extends State<SellScreen> {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: Colors.white.withOpacity(0.2),
-            border: Border.all(color: Colors.white.withOpacity(0.35)),
+            borderRadius: BorderRadius.circular(Brand.rMd),
+            color: Brand.gold.withValues(alpha: 0.10),
+            border: Border.all(color: Brand.gold.withValues(alpha: 0.45)),
           ),
-          child: Text(
-            _t(settings, "Selected: $metalTitle", "منتخب: $metalTitle"),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: _accent,
-            ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Brand.gold, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _t(settings, "Selected: $metalTitle", "منتخب: $metalTitle"),
+                  style: Brand.sans(14, color: Brand.goldBright, weight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
         if (_isGold) ...[
           Text(
             _t(settings, "Unit", "یونٹ"),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: _accent,
-            ),
+            style: Brand.label(11, color: Brand.gold, spacing: 1.2),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -606,51 +691,45 @@ class _SellScreenState extends State<SellScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
             _t(settings, "How much do you want to sell?", "آپ کتنا بیچنا چاہتے ہیں؟"),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: _accent,
-            ),
+            style: Brand.label(11, color: Brand.gold, spacing: 1.2),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: _weightCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: _parseWeight,
-            style: const TextStyle(color: Colors.white),
+            style: Brand.number(16, color: Brand.text, weight: FontWeight.w700),
             decoration: InputDecoration(
               hintText: _t(
                 settings,
                 "Enter weight in ${_unitLabel(loc, _unit)}",
                 "${_unitLabel(loc, _unit)} میں وزن درج کریں",
               ),
-              hintStyle: TextStyle(color: _accent.withOpacity(0.75)),
-              prefixIcon: Icon(Icons.scale_outlined, color: _accent),
+              hintStyle: Brand.sans(14, color: Brand.textFaint),
+              prefixIcon: const Icon(Icons.scale_outlined, color: Brand.gold),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _accent.withOpacity(0.55)),
+                borderRadius: BorderRadius.circular(Brand.rSm),
+                borderSide: BorderSide(color: Brand.gold.withValues(alpha: 0.45)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _accent.withOpacity(0.55)),
+                borderRadius: BorderRadius.circular(Brand.rSm),
+                borderSide: BorderSide(color: Brand.gold.withValues(alpha: 0.45)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _accent),
+                borderRadius: BorderRadius.circular(Brand.rSm),
+                borderSide: const BorderSide(color: Brand.gold, width: 1.6),
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.1),
+              fillColor: Brand.cardHigh.withValues(alpha: 0.45),
             ),
           ),
         ] else if (_isSilver) ...[
           Text(
             _t(settings, "Silver categories", "چاندی کی کیٹیگریز"),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: _accent,
-            ),
+            style: Brand.label(11, color: Brand.gold, spacing: 1.2),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -705,46 +784,54 @@ class _SellScreenState extends State<SellScreen> {
           ),
         ],
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
-        Card(
-          color: _card,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _t(settings, "SELL Price", "سیل قیمت"),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: _accent,
+        BrandCard(
+          gold: true,
+          padding: const EdgeInsets.all(Brand.s16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _t(settings, "SELL Price", "سیل قیمت"),
+                      style: Brand.label(11, color: Brand.gold, spacing: 1.4),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                _priceLine(
-                  context,
-                  label: _t(settings, "Unit price", "یونٹ قیمت"),
-                  value: unitSell,
-                  sym: sym,
-                ),
-                const SizedBox(height: 8),
-                _priceLine(
-                  context,
-                  label: _t(settings, "Total", "کل"),
-                  value: totalSell,
-                  sym: sym,
-                  strong: true,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _t(settings, "Updated (PKT): $updatedPkt", "اپڈیٹ (پاکستان وقت): $updatedPkt"),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _accent.withOpacity(0.75),
+                  const LiveDot(color: Brand.gold, size: 7),
+                  const SizedBox(width: 6),
+                  Text(
+                    _t(settings, "LIVE", "لائیو"),
+                    style: Brand.label(10, color: Brand.gold, spacing: 1.2),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _priceLine(
+                context,
+                label: _t(settings, "Unit price", "یونٹ قیمت"),
+                value: unitSell,
+                sym: sym,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: Brand.hairline),
+              ),
+              _priceLine(
+                context,
+                label: _t(settings, "Total", "کل"),
+                value: totalSell,
+                sym: sym,
+                strong: true,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _t(settings, "Updated (PKT): $updatedPkt", "اپڈیٹ (پاکستان وقت): $updatedPkt"),
+                style: Brand.sans(11.5, color: Brand.textFaint),
+              ),
+            ],
           ),
         ),
         if (_isGold) ...[
@@ -755,11 +842,50 @@ class _SellScreenState extends State<SellScreen> {
               "a) making charges will be deducted on jewellery bought from us in case of return after 15 days.\nb) 15-20% deduction on jewellery bought from somewhere else, depending on the condition and purity of the jewellery (in case of selling)\nC) zero deduction on old jewellery exchange with us (after testing the purity and condition of the jewellery)",
               "ا) ہم سے خریدی گئی جیولری کی واپسی 15 دن کے بعد کی صورت میں میکنگ چارجز کٹے جائیں گے۔\nب) کہیں اور سے خریدی گئی جیولری پر 15-20% کٹوتی، جیولری کی حالت اور پاکیزگی پر منحصر (بیچنے کی صورت میں)\nج) ہمارے ساتھ پرانی جیولری کے تبادلے پر صفر کٹوتی (جیولری کی پاکیزگی اور حالت کی جانچ کے بعد)",
             ),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: _accent.withOpacity(0.75),
-            ),
+            style: Brand.sans(12, color: Brand.textFaint, height: 1.5),
           ),
         ],
+        const SizedBox(height: 18),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Brand.rSm),
+            boxShadow: _canPlaceOrder ? Brand.goldGlow : null,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: const Color(0xFF1A1207),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                disabledBackgroundColor: _accent.withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Brand.rSm),
+                ),
+              ),
+              onPressed: _canPlaceOrder
+                  ? () => _startCheckout(context, totalSell)
+                  : null,
+              icon: const Icon(Icons.sell_outlined),
+              label: Text(
+                _t(settings, "Place Sell Request", "فروخت کی درخواست دیں"),
+                style: Brand.sans(15, weight: FontWeight.w800, color: const Color(0xFF1A1207)),
+              ),
+            ),
+          ),
+        ),
+        if (!_canPlaceOrder)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              _isGold
+                  ? _t(settings, "Enter a weight to place your request.",
+                      "درخواست دینے کے لیے وزن درج کریں۔")
+                  : _t(settings, "Choose a quantity to place your request.",
+                      "درخواست دینے کے لیے مقدار منتخب کریں۔"),
+              style: Brand.sans(12, color: Brand.textFaint),
+            ),
+          ),
       ],
     );
   }
@@ -771,23 +897,19 @@ class _SellScreenState extends State<SellScreen> {
         required String sym,
         bool strong = false,
       }) {
-    final style = (strong
-        ? Theme.of(context).textTheme.titleMedium
-        : Theme.of(context).textTheme.bodyMedium)
-        ?.copyWith(
-      fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
-      color: Colors.white,
-    );
+    final style = strong
+        ? Brand.number(28, color: Brand.goldBright, weight: FontWeight.w800)
+        : Brand.number(16, color: Brand.text, weight: FontWeight.w700);
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Text(
             label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: _accent,
-            ),
+            style: strong
+                ? Brand.sans(14, color: Brand.textMuted, weight: FontWeight.w700)
+                : Brand.sans(13.5, color: Brand.textMuted),
           ),
         ),
         const SizedBox(width: 10),
@@ -833,15 +955,16 @@ class _CustomOutlinedButton extends StatelessWidget {
           color: isEnabled ? accentColor : accentColor.withOpacity(0.3),
           width: 1.5,
         ),
-        backgroundColor: Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: isEnabled ? Brand.gold.withValues(alpha: 0.08) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Brand.rSm)),
       ),
       onPressed: onPressed,
       child: Text(
         text,
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
+        style: Brand.sans(
+          14,
+          weight: FontWeight.w800,
           color: isEnabled ? accentColor : accentColor.withOpacity(0.5),
         ),
       ),
@@ -873,51 +996,61 @@ class _ChoiceChipState extends State<_ChoiceChip> {
 
   @override
   Widget build(BuildContext context) {
-    final active = widget.selected || _isPressed;
+    final selected = widget.selected;
+    const Color onGold = Color(0xFF1A1207);
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
       onTap: widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? widget.accentColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: active ? widget.accentColor : widget.accentColor.withOpacity(0.5),
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: active ? Colors.white : widget.accentColor,
-              ),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: Brand.fast,
+        curve: Brand.easeOut,
+        child: AnimatedContainer(
+          duration: Brand.base,
+          curve: Brand.easeOut,
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: selected ? Brand.goldGradient : null,
+            color: selected ? null : Brand.cardHigh.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? Colors.transparent : Brand.hairline,
+              width: 1.5,
             ),
-            if (widget.subtitle != null) ...[
-              const SizedBox(height: 2),
+            boxShadow: selected ? Brand.goldGlow : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Text(
-                widget.subtitle!,
+                widget.label,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: active
-                      ? Colors.white.withOpacity(0.95)
-                      : widget.accentColor.withOpacity(0.9),
-                  height: 1.1,
+                style: Brand.sans(
+                  14,
+                  weight: FontWeight.w800,
+                  color: selected ? onGold : Brand.text,
                 ),
               ),
+              if (widget.subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  widget.subtitle!,
+                  textAlign: TextAlign.center,
+                  style: Brand.sans(
+                    11,
+                    weight: FontWeight.w700,
+                    height: 1.1,
+                    color: selected ? onGold.withValues(alpha: 0.85) : Brand.textMuted,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

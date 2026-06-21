@@ -79,7 +79,8 @@ class OrderLine {
   final String productName;
   final String metal;
   final String karat;
-  final int quantity;
+  final double quantity;
+  final String? unit; // non-null for metal-by-weight Buy/Sell lines
   final double unitPrice;
   final double lineTotal;
 
@@ -88,6 +89,7 @@ class OrderLine {
     required this.metal,
     required this.karat,
     required this.quantity,
+    required this.unit,
     required this.unitPrice,
     required this.lineTotal,
   });
@@ -96,10 +98,20 @@ class OrderLine {
         productName: _s(json["product_name"]),
         metal: _s(json["metal"]),
         karat: _s(json["karat"]),
-        quantity: _i(json["quantity"]),
+        quantity: _d(json["quantity"]),
+        unit: json["unit"] == null ? null : _s(json["unit"]),
         unitPrice: _d(json["unit_price"]),
         lineTotal: _d(json["line_total"]),
       );
+
+  /// A synthesized Buy/Sell (metal-by-weight) line carries a [unit];
+  /// cart product lines do not.
+  bool get isMetalLine => unit != null && unit!.trim().isNotEmpty;
+
+  /// Quantity without a trailing ".0" (3.5 -> "3.5", 2.0 -> "2").
+  String get quantityLabel => quantity == quantity.roundToDouble()
+      ? quantity.toInt().toString()
+      : quantity.toString();
 }
 
 class OrderPayment {
@@ -123,6 +135,7 @@ class OrderPayment {
 class ShopOrder {
   final String orderNumber;
   final String status;
+  final String orderType; // buy | sell
   final String customerName;
   final String customerPhone;
   final double totalAmount;
@@ -132,6 +145,7 @@ class ShopOrder {
   ShopOrder({
     required this.orderNumber,
     required this.status,
+    required this.orderType,
     required this.customerName,
     required this.customerPhone,
     required this.totalAmount,
@@ -142,6 +156,7 @@ class ShopOrder {
   factory ShopOrder.fromJson(Map<String, dynamic> json) => ShopOrder(
         orderNumber: _s(json["order_number"]),
         status: _s(json["status"]),
+        orderType: _s(json["type"]),
         customerName: _s(json["customer_name"]),
         customerPhone: _s(json["customer_phone"]),
         totalAmount: _d(json["total_amount"]),

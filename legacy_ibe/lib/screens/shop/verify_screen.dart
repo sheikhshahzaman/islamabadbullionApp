@@ -8,7 +8,10 @@ import "scan_screen.dart";
 /// Verify a product's authenticity by serial number (manual entry)
 /// or by scanning its QR sticker.
 class VerifyScreen extends StatefulWidget {
-  const VerifyScreen({super.key});
+  /// When true, the QR scanner opens automatically on first build — used by
+  /// the standalone "Scan QR Code" menu entry.
+  final bool autoScan;
+  const VerifyScreen({super.key, this.autoScan = false});
 
   @override
   State<VerifyScreen> createState() => _VerifyScreenState();
@@ -22,6 +25,16 @@ class _VerifyScreenState extends State<VerifyScreen> {
   bool _busy = false;
   String? _error;
   VerifyResult? _result;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoScan) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scanQr();
+      });
+    }
+  }
 
   @override
   void dispose() {
