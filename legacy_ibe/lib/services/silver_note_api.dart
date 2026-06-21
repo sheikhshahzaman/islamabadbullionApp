@@ -1,20 +1,20 @@
+import "../config.dart";
 import "../models/silver_note_response.dart";
 import "api_client.dart";
 
-/// The silver-note feature existed only on the old PHP backend and was
-/// already disabled there. The new Laravel backend has no equivalent, so
-/// this returns an inactive note without any network call. The provider
-/// and screens handle the inactive state exactly as before.
+/// Fetches the optional admin-managed silver note from the Laravel backend
+/// (GET /api/silver-note). The note is shown under the silver table only when
+/// the admin marks it active and provides text. If the endpoint is unavailable
+/// the call throws and the provider keeps the note hidden — so the screen
+/// degrades gracefully.
 class SilverNoteApi {
-  // ignore: avoid_unused_constructor_parameters
-  SilverNoteApi(ApiClient client);
+  final ApiClient _client;
+  SilverNoteApi(this._client);
 
   Future<SilverNoteResponse> fetchNote() async {
-    return SilverNoteResponse(
-      success: true,
-      noteEn: "",
-      noteUr: "",
-      isActive: false,
+    final json = await _client.getJson(
+      Uri.parse("${AppConfig.apiBase}/silver-note"),
     );
+    return SilverNoteResponse.fromJson(json);
   }
 }
