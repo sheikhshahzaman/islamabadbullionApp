@@ -49,5 +49,11 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>Islamabad Bullion uses the camera to scan the QR code on your gold or silver item to verify its authenticity.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Islamabad Bullion needs access to your photos so you can attach a payment-proof screenshot to your order.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Islamabad Bullion may save images you choose while attaching a payment proof.</string>
 	</dict>
 </plist>

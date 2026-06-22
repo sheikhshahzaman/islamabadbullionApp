@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Android release signing
+# ─────────────────────────────────────────────────────────────────────────
+# 1. Copy this file to:  android/key.properties
+# 2. Fill in the real values you set when you created upload-keystore.jks.
+#
+# NEVER commit the real key.properties or the .jks file — both are gitignored.
+# If you don't remember the alias, list it with:
+#   keytool -list -v -keystore android/app/upload-keystore.jks
+#
+# storeFile is resolved relative to android/app/ (where upload-keystore.jks lives).
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=upload-keystore.jks
