@@ -73,9 +73,12 @@ Android camera permission is contributed by the scanner/image-picker plugins via
   - I can capture these from the emulator/simulator once we do a release run.
 
 ## Build commands
-- Android (Play): `flutter build appbundle --release`  → `build/app/outputs/bundle/release/app-release.aab`
-- Android (sideload): `flutter build apk --release`
-- iOS (needs Xcode + Apple account): `flutter build ipa` then upload via Transporter/Xcode.
+IMPORTANT: always pass `--no-tree-shake-icons`. The app uses font_awesome_flutter
+(the WhatsApp bottom-nav icon), which is incompatible with Flutter's release
+icon tree-shaker — the build FAILS during AOT without this flag.
+- Android (Play): `flutter build appbundle --release --no-tree-shake-icons`  → `build/app/outputs/bundle/release/app-release.aab`
+- Android (sideload): `flutter build apk --release --no-tree-shake-icons`
+- iOS (needs Xcode + Apple account): `flutter build ipa --no-tree-shake-icons` then upload via Transporter/Xcode.
 (Do NOT pass `--dart-define=API_BASE=…` for release — the default already points at the live API.)
 
 ## Review notes
