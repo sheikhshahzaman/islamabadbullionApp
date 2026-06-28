@@ -1,6 +1,8 @@
 // lib/screens/home_screen.dart
 import "package:flutter/material.dart";
 import "package:provider/provider.dart";
+import "package:url_launcher/url_launcher.dart";
+import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 import "../providers/app_settings.dart";
 import "../providers/prices_provider.dart";
@@ -15,10 +17,10 @@ import "../utils/time_utils.dart";
 import "../models/metal_price.dart";
 
 import "../widgets/headline_slider_card.dart";
-import "buy_screen.dart";
-import "sell_screen.dart";
 import "more_screen.dart";
 import "contact_us_screen.dart";
+import "shop/products_screen.dart";
+import "../providers/site_config_provider.dart";
 import "dart:async";
 import "package:internet_connection_checker_plus/internet_connection_checker_plus.dart";
 
@@ -212,29 +214,64 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return isUrdu ? "ہم سے رابطہ" : "Contact Us";
       case 1:
-        return isUrdu ? "خریدیں" : "Buy";
+        return isUrdu ? "شاپ" : "Shop";
       case 2:
         return isUrdu ? "اسپاٹ" : "Spot";
       case 3:
-        return isUrdu ? "بیچیں" : "Sell";
+        return isUrdu ? "واٹس ایپ" : "WhatsApp";
       default:
         return isUrdu ? "مزید" : "More";
     }
   }
 
+  Future<void> _openWhatsApp() async {
+    final number = context
+        .read<SiteConfigProvider>()
+        .config
+        .contactWhatsapp
+        .replaceAll(RegExp(r"[^0-9]"), "");
+    if (number.isEmpty) return;
+    try {
+      final ok = await launchUrl(
+        Uri.parse("https://wa.me/$number"),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.read<AppSettings>().isUrdu
+                ? "واٹس ایپ نہیں کھل سکا"
+                : "Couldn't open WhatsApp"),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
   void _onBottomNavTap(int i) {
-    if (i == 0) {
+    // Contact (0) and Shop (1) open as pushed full screens; WhatsApp (3)
+    // launches the WhatsApp app. None of these replace the persistent body
+    // (Spot / More) — we restore it when a pushed screen is closed.
+    if (i == 0 || i == 1) {
       setState(() {
         _lastNonContactIndex = _navIndex;
-        _navIndex = 0;
+        _navIndex = i;
       });
 
+      final Widget screen =
+          i == 0 ? const ContactUsScreen() : const ProductsScreen();
+
       Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const ContactUsScreen()))
+          .push(MaterialPageRoute(builder: (_) => screen))
           .then((_) {
         if (!mounted) return;
         setState(() => _navIndex = _lastNonContactIndex);
       });
+      return;
+    }
+
+    if (i == 3) {
+      _openWhatsApp();
       return;
     }
 
@@ -247,12 +284,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final prices = context.watch<PricesProvider>();
     final loc = AppLocalizations.of(context);
 
-    final isSpot = _navIndex == 2;
-    final isBuy = _navIndex == 1;
-    final isSell = _navIndex == 3;
-    final isMore = _navIndex == 4;
+    // Spot (2) and More (4) are the persistent body tabs. Contact (0) and Shop
+    // (1) are pushed screens; while one is open we keep the last body tab
+    // underneath it.
+    final bodyIndex =
+        (_navIndex == 0 || _navIndex == 1) ? _lastNonContactIndex : _navIndex;
+    final isSpot = bodyIndex == 2;
+    final isMore = bodyIndex == 4;
 
-    final usesPrices = isSpot || isBuy || isSell;
+    final usesPrices = isSpot;
 
     return Scaffold(
       backgroundColor: _bg,
@@ -285,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         )
             : Text(
-          _navLabel(_navIndex, settings.isUrdu),
+          _navLabel(bodyIndex, settings.isUrdu),
           style: const TextStyle(
             fontWeight: FontWeight.w900,
             color: Colors.white,
@@ -311,8 +351,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: _navLabel(0, settings.isUrdu),
           ),
           BrandNavItem(
-            icon: Icons.shopping_bag_outlined,
-            activeIcon: Icons.shopping_bag,
+            icon: Icons.storefront_outlined,
+            activeIcon: Icons.storefront,
             label: _navLabel(1, settings.isUrdu),
           ),
           BrandNavItem(
@@ -321,8 +361,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: _navLabel(2, settings.isUrdu),
           ),
           BrandNavItem(
-            icon: Icons.sell_outlined,
-            activeIcon: Icons.sell,
+            icon: FontAwesomeIcons.whatsapp,
+            activeIcon: FontAwesomeIcons.whatsapp,
             label: _navLabel(3, settings.isUrdu),
           ),
           BrandNavItem(
@@ -353,10 +393,6 @@ class _HomeScreenState extends State<HomeScreen> {
             hasInternet: _hasInternet,
             internetChecked: _internetChecked,
           )
-              : isBuy
-              ? const BuyScreen(key: ValueKey("buy"))
-              : isSell
-              ? const SellScreen(key: ValueKey("sell"))
               : isMore
               ? const MoreScreen(key: ValueKey("more"))
               : _PlaceholderPage(

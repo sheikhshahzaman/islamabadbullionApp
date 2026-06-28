@@ -27,6 +27,7 @@ dependencies:
   # UI/UX: declarative animations (entrance, stagger, shimmer) + premium fonts.
   flutter_animate: ^4.5.0
   google_fonts: ^6.2.1
+  font_awesome_flutter: ^10.7.0   # WhatsApp (brand) icon for the bottom nav
 
 dev_dependencies:
   flutter_test:
