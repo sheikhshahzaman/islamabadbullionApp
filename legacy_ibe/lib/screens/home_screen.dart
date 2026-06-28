@@ -2,7 +2,6 @@
 import "package:flutter/material.dart";
 import "package:provider/provider.dart";
 import "package:url_launcher/url_launcher.dart";
-import "package:font_awesome_flutter/font_awesome_flutter.dart";
 
 import "../providers/app_settings.dart";
 import "../providers/prices_provider.dart";
@@ -361,9 +360,18 @@ class _HomeScreenState extends State<HomeScreen> {
             label: _navLabel(2, settings.isUrdu),
           ),
           BrandNavItem(
-            icon: FontAwesomeIcons.whatsapp,
-            activeIcon: FontAwesomeIcons.whatsapp,
+            icon: Icons.chat_outlined,
+            activeIcon: Icons.chat,
             label: _navLabel(3, settings.isUrdu),
+            customIcon: Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: Color(0xFF25D366), // WhatsApp green
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.call, size: 14, color: Colors.white),
+            ),
           ),
           BrandNavItem(
             icon: Icons.grid_view_outlined,

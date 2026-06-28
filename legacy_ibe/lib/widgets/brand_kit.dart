@@ -196,7 +196,17 @@ class BrandNavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  const BrandNavItem({required this.icon, required this.activeIcon, required this.label});
+
+  /// Optional custom icon widget (e.g. a brand glyph). When set, it replaces
+  /// the [icon]/[activeIcon] glyph inside the nav cell.
+  final Widget? customIcon;
+
+  const BrandNavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    this.customIcon,
+  });
 }
 
 /// Animated, gold-accented bottom navigation bar. Stateless — owner supplies
@@ -273,11 +283,12 @@ class _NavCell extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: selected ? Brand.goldGlow : null,
               ),
-              child: Icon(
-                selected ? item.activeIcon : item.icon,
-                size: 22,
-                color: selected ? const Color(0xFF1A1207) : Brand.textMuted,
-              ),
+              child: item.customIcon ??
+                  Icon(
+                    selected ? item.activeIcon : item.icon,
+                    size: 22,
+                    color: selected ? const Color(0xFF1A1207) : Brand.textMuted,
+                  ),
             ),
             const SizedBox(height: 5),
             AnimatedDefaultTextStyle(
