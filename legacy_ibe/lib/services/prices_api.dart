@@ -124,12 +124,26 @@ class PricesApi {
 
     final updated = DateTime.tryParse((json["last_updated"] ?? "").toString());
 
+    // Live international spot (USD/oz) — always USD, passed through untouched so
+    // the app's spot table shows the real market spot, not the local rates.
+    final quotes = m(json["quotes"]);
+    final intl = m(json["international"]);
+    final qGold = m(quotes["gold"]);
+    final qSilver = m(quotes["silver"]);
+    double? spot(dynamic v) => (v is num && v > 0) ? v.toDouble() : null;
+    final spotGoldBid = spot(qGold["bid"]) ?? spot(intl["xau_usd"]);
+    final spotSilverBid = spot(qSilver["bid"]) ?? spot(intl["xag_usd"]);
+
     return MetalPricesResponse.fromJson({
       "success": metals.isNotEmpty,
       "timestamp":
           (updated ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000,
       "currency": currency,
       "metals": metals,
+      "spot_gold_bid": spotGoldBid,
+      "spot_gold_ask": spot(qGold["ask"]) ?? spotGoldBid,
+      "spot_silver_bid": spotSilverBid,
+      "spot_silver_ask": spot(qSilver["ask"]) ?? spotSilverBid,
     });
   }
 }

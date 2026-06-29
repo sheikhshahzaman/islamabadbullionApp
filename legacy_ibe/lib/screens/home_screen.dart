@@ -253,7 +253,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // (Spot / More) — we restore it when a pushed screen is closed.
     if (i == 0 || i == 1) {
       setState(() {
-        _lastNonContactIndex = _navIndex;
+        // Only remember a real persistent body (Spot / More), never another
+        // pushed tab, so closing the pushed screen restores the right body.
+        if (_navIndex == 2 || _navIndex == 4) _lastNonContactIndex = _navIndex;
         _navIndex = i;
       });
 
@@ -262,15 +264,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
       Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => screen))
-          .then((_) {
+          .then((result) {
         if (!mounted) return;
-        setState(() => _navIndex = _lastNonContactIndex);
+        // A pushed screen (e.g. Contact) can pop with a nav index when the user
+        // taps its own bottom bar — honour that tap instead of just restoring.
+        if (result is int && result != 0) {
+          _onBottomNavTap(result);
+        } else {
+          setState(() => _navIndex = _lastNonContactIndex);
+        }
       });
       return;
     }
 
     if (i == 3) {
       _openWhatsApp();
+      // Keep the highlight on the visible body, not the WhatsApp tab.
+      if (_navIndex != 2 && _navIndex != 4) {
+        setState(() => _navIndex = _lastNonContactIndex);
+      }
       return;
     }
 
@@ -813,20 +825,13 @@ class _SpotBody extends StatelessWidget {
     final silverNoteProvider = context.watch<SilverNoteProvider>();
     final silverNoteText = silverNoteProvider.note?.noteFor(settings.isUrdu) ?? "";
 
-    // USD Ounce BID/ASK
-    final usdSource = _UsdSource.from(prices: prices, latest: latest);
-    final usdGold = usdSource.directMetalFor("XAU", fallback: gold);
-    final usdSilver = usdSource.directMetalFor("XAG", fallback: silver);
-
+    // USD/oz international SPOT (live) — comes straight from the API, separate
+    // from the admin-set local rates, so it matches the website's spot prices.
     final usdSym = currencySymbol("USD");
-    final goldBidUsd =
-    usdGold == null ? null : usdSource.toUsdOrNull(usdGold.buy.perOz);
-    final goldAskUsd =
-    usdGold == null ? null : usdSource.toUsdOrNull(usdGold.sell.perOz);
-    final silverBidUsd =
-    usdSilver == null ? null : usdSource.toUsdOrNull(usdSilver.buy.perOz);
-    final silverAskUsd =
-    usdSilver == null ? null : usdSource.toUsdOrNull(usdSilver.sell.perOz);
+    final goldBidUsd = latest.spotGoldBid;
+    final goldAskUsd = latest.spotGoldAsk;
+    final silverBidUsd = latest.spotSilverBid;
+    final silverAskUsd = latest.spotSilverAsk;
 
     return BrandBackground(
       child: RefreshIndicator(

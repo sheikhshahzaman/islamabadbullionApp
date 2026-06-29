@@ -29,11 +29,11 @@ class ContactUsScreen extends StatelessWidget {
       case 0:
         return isUrdu ? "ہم سے رابطہ" : "Contact Us";
       case 1:
-        return isUrdu ? "خریدیں" : "Buy";
+        return isUrdu ? "شاپ" : "Shop";
       case 2:
         return isUrdu ? "اسپاٹ" : "Spot";
       case 3:
-        return isUrdu ? "بیچیں" : "Sell";
+        return isUrdu ? "واٹس ایپ" : "WhatsApp";
       default:
         return isUrdu ? "مزید" : "More";
     }
@@ -369,33 +369,44 @@ class ContactUsScreen extends StatelessWidget {
         ),
       ),
 
-      // ✅ EXACT same BottomNavigationBar style/format as Home + More
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: _bg,
-        unselectedItemColor: Colors.white70,
-        selectedItemColor: Colors.white,
+      // Premium bottom nav — identical layout to Home:
+      // Contact · Shop · Spot · WhatsApp · More
+      bottomNavigationBar: PremiumBottomNav(
         currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
         onTap: onBottomNavTap,
         items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.contact_mail_outlined),
+          BrandNavItem(
+            icon: Icons.call_outlined,
+            activeIcon: Icons.call,
             label: _navLabel(context, 0),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.shopping_cart_outlined),
+          BrandNavItem(
+            icon: Icons.storefront_outlined,
+            activeIcon: Icons.storefront,
             label: _navLabel(context, 1),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.show_chart),
+          BrandNavItem(
+            icon: Icons.show_chart_rounded,
+            activeIcon: Icons.insights_rounded,
             label: _navLabel(context, 2),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.sell_outlined),
+          BrandNavItem(
+            icon: Icons.chat_outlined,
+            activeIcon: Icons.chat,
             label: _navLabel(context, 3),
+            customIcon: Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: Color(0xFF25D366), // WhatsApp green
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.call, size: 14, color: Colors.white),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.more_horiz),
+          BrandNavItem(
+            icon: Icons.grid_view_outlined,
+            activeIcon: Icons.grid_view_rounded,
             label: _navLabel(context, 4),
           ),
         ],
