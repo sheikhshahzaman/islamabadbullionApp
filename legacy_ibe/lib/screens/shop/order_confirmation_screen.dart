@@ -1,16 +1,32 @@
 import "package:flutter/material.dart";
 import "package:intl/intl.dart";
+import "package:provider/provider.dart";
+import "package:url_launcher/url_launcher.dart";
 
 import "../../models/shop_models.dart";
+import "../../providers/site_config_provider.dart";
 
 class OrderConfirmationScreen extends StatelessWidget {
   final ShopOrder order;
   const OrderConfirmationScreen({super.key, required this.order});
 
+  Future<void> _openWhatsApp(String number, String orderNumber) async {
+    final digits = number.replaceAll(RegExp(r"[^0-9]"), "");
+    final text = Uri.encodeComponent(
+        "Hi, I placed an order #$orderNumber. Please confirm.");
+    await launchUrl(Uri.parse("https://wa.me/$digits?text=$text"),
+        mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _callPhone(String number) async {
+    await launchUrl(Uri.parse("tel:$number"));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final money = NumberFormat("#,##0");
+    final config = context.watch<SiteConfigProvider>().config;
 
     return Scaffold(
       appBar: AppBar(title: const Text("Order placed")),
@@ -49,13 +65,51 @@ class OrderConfirmationScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 3),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(item.isMetalLine
-                                ? item.productName
-                                : "${item.productName} × ${item.quantityLabel}"),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.isMetalLine
+                                    ? item.productName
+                                    : "${item.productName} × ${item.quantityLabel}"),
+                                if (item.packagingCharge > 0)
+                                  Text(
+                                    "+ Rs ${money.format(item.packagingCharge)} packaging × ${item.quantityLabel}",
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                              ],
+                            ),
                           ),
                           Text("Rs ${money.format(item.lineTotal)}"),
+                        ],
+                      ),
+                    ),
+                  _row(
+                    theme,
+                    "Delivery",
+                    order.deliveryMethod == "delivery"
+                        ? "Delivery"
+                        : "Pickup from our shop",
+                  ),
+                  if (order.deliveryMethod == "delivery" &&
+                      (order.deliveryAddress ?? "").isNotEmpty)
+                    _row(theme, "Address", order.deliveryAddress!),
+                  const Divider(height: 20),
+                  Row(
+                    children: [
+                      const Expanded(child: Text("Items Total")),
+                      Text("Rs ${money.format(order.totalAmount)}"),
+                    ],
+                  ),
+                  if (order.deliveryCharge > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          const Expanded(child: Text("Delivery Charge")),
+                          Text("Rs ${money.format(order.deliveryCharge)}"),
                         ],
                       ),
                     ),
@@ -67,7 +121,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                             style: theme.textTheme.titleMedium),
                       ),
                       Text(
-                        "Rs ${money.format(order.totalAmount)}",
+                        "Rs ${money.format(order.grandTotal)}",
                         style: theme.textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
@@ -83,6 +137,53 @@ class OrderConfirmationScreen extends StatelessWidget {
             "support team to check your order status anytime.",
             style: theme.textTheme.bodySmall,
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Contact Us", style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Questions about your order? Reach us here.",
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 10),
+                  if (config.contactWhatsapp.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFF25D366),
+                        child: Icon(Icons.chat_bubble_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                      title: const Text("WhatsApp"),
+                      subtitle: Text(config.contactWhatsapp),
+                      onTap: () => _openWhatsApp(
+                          config.contactWhatsapp, order.orderNumber),
+                    ),
+                  if (config.contactPhone.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(child: Icon(Icons.call)),
+                      title: const Text("Call Us"),
+                      subtitle: Text(config.contactPhone),
+                      onTap: () => _callPhone(config.contactPhone),
+                    ),
+                  if (config.contactAddress.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          const CircleAvatar(child: Icon(Icons.place_outlined)),
+                      title: const Text("Visit Us"),
+                      subtitle: Text(config.contactAddress),
+                    ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           FilledButton(

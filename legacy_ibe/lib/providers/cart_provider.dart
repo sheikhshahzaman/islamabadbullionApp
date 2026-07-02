@@ -8,7 +8,8 @@ class CartLine {
 
   CartLine({required this.product, this.quantity = 1});
 
-  double get lineTotal => (product.currentPrice ?? 0) * quantity;
+  double get lineTotal =>
+      ((product.currentPrice ?? 0) + product.packagingCharge) * quantity;
 }
 
 /// Local (in-app) cart. The server reprices everything at checkout, so the

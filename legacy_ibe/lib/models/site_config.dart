@@ -19,6 +19,10 @@ class SiteConfig {
   final String hoursSat;
   final String hoursSun;
 
+  /// Flat delivery charge (PKR) applied to every order that chooses delivery.
+  /// Pickup is always free. 0 means free delivery.
+  final double deliveryCharge;
+
   const SiteConfig({
     required this.siteName,
     required this.liveRatesEnabled,
@@ -31,6 +35,7 @@ class SiteConfig {
     required this.hoursFri,
     required this.hoursSat,
     required this.hoursSun,
+    this.deliveryCharge = 0,
   });
 
   /// Sensible defaults (the previously hardcoded values), used on first launch
@@ -78,6 +83,9 @@ class SiteConfig {
       hoursFri: pick(s(hours["fri"]), d.hoursFri),
       hoursSat: pick(s(hours["sat"]), d.hoursSat),
       hoursSun: pick(s(hours["sun"]), d.hoursSun),
+      deliveryCharge: (json["delivery_charge"] is num)
+          ? (json["delivery_charge"] as num).toDouble()
+          : 0,
     );
   }
 
@@ -98,5 +106,6 @@ class SiteConfig {
           "sat": hoursSat,
           "sun": hoursSun,
         },
+        "delivery_charge": deliveryCharge,
       };
 }

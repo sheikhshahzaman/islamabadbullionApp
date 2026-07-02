@@ -398,10 +398,11 @@ class ContactUsScreen extends StatelessWidget {
               width: 24,
               height: 24,
               decoration: const BoxDecoration(
-                color: Color(0xFF25D366), // WhatsApp green
+                gradient: Brand.goldGradient,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.call, size: 14, color: Colors.white),
+              child: const Icon(Icons.chat_bubble_rounded,
+                  size: 13, color: Brand.teal),
             ),
           ),
           BrandNavItem(

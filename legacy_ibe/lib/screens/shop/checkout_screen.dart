@@ -5,6 +5,7 @@ import "package:provider/provider.dart";
 
 import "../../models/shop_models.dart";
 import "../../providers/shop_provider.dart";
+import "../../providers/site_config_provider.dart";
 import "order_confirmation_screen.dart";
 
 /// 3-step checkout matching the website:
@@ -38,19 +39,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _referenceCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
 
   int _step = 0;
   bool _busy = false;
   String? _error;
 
   CreatedOrder? _created;
-  String _method = "";
+  // Only bank transfer is offered, so it's pre-selected — nothing to choose.
+  String _method = "bank_transfer";
+  // Pickup is free and needs no address; delivery requires one.
+  String _deliveryMethod = "pickup";
   XFile? _proof;
 
   static const _methods = <String, String>{
-    "easypaisa": "EasyPaisa",
-    "jazzcash": "JazzCash",
-    "raast": "Raast",
     "bank_transfer": "Bank Transfer",
   };
 
@@ -59,6 +61,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _referenceCtrl.dispose();
+    _addressCtrl.dispose();
     super.dispose();
   }
 
@@ -114,6 +117,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         orderNumber: created.order.orderNumber,
         method: _method,
         proofImagePath: proof.path,
+        deliveryMethod: _deliveryMethod,
+        deliveryAddress: _deliveryMethod == "delivery" ? _addressCtrl.text : null,
         referenceNumber: _referenceCtrl.text,
       );
       widget.onOrderComplete?.call();
@@ -225,6 +230,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final created = _created;
     if (created == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
+    final deliveryCharge =
+        context.watch<SiteConfigProvider>().config.deliveryCharge;
+
+    final addressFilled = _addressCtrl.text.trim().isNotEmpty;
+    final canContinue =
+        _method.isNotEmpty && (_deliveryMethod != "delivery" || addressFilled);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +245,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           "Order ${created.order.orderNumber} · Rs ${_money.format(created.order.totalAmount)}",
           style: theme.textTheme.titleSmall,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        Text("Pickup or delivery?", style: theme.textTheme.labelLarge),
+        RadioListTile<String>(
+          value: "pickup",
+          // ignore: deprecated_member_use
+          groupValue: _deliveryMethod,
+          // ignore: deprecated_member_use
+          onChanged: (v) => setState(() => _deliveryMethod = v ?? "pickup"),
+          title: const Text("Pickup from our shop"),
+          subtitle: const Text("Free"),
+          contentPadding: EdgeInsets.zero,
+        ),
+        RadioListTile<String>(
+          value: "delivery",
+          // ignore: deprecated_member_use
+          groupValue: _deliveryMethod,
+          // ignore: deprecated_member_use
+          onChanged: (v) => setState(() => _deliveryMethod = v ?? "pickup"),
+          title: const Text("Delivery"),
+          subtitle: Text(deliveryCharge > 0
+              ? "Rs ${_money.format(deliveryCharge)}"
+              : "Free Delivery"),
+          contentPadding: EdgeInsets.zero,
+        ),
+        if (_deliveryMethod == "delivery") ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _addressCtrl,
+            maxLines: 3,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: "Delivery address",
+              hintText: "House/flat, street, area, city",
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Text("Payment method", style: theme.textTheme.labelLarge),
         for (final entry in _methods.entries)
           RadioListTile<String>(
             value: entry.key,
@@ -245,20 +294,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             title: Text(entry.value),
             contentPadding: EdgeInsets.zero,
           ),
-        if (_method.isNotEmpty) _accountDetails(created, theme),
+        if (_method.isNotEmpty) _accountDetails(created, theme, deliveryCharge),
         const SizedBox(height: 8),
         FilledButton(
-          onPressed: _method.isEmpty ? null : () => setState(() => _step = 2),
+          onPressed: canContinue ? () => setState(() => _step = 2) : null,
           child: const Text("Continue"),
         ),
       ],
     );
   }
 
-  Widget _accountDetails(CreatedOrder created, ThemeData theme) {
+  Widget _accountDetails(
+      CreatedOrder created, ThemeData theme, double deliveryCharge) {
     final details = created.paymentAccounts.forMethod(_method);
     final entries =
         details.entries.where((e) => e.value.trim().isNotEmpty).toList();
+
+    final delivery = _deliveryMethod == "delivery" ? deliveryCharge : 0.0;
+    final grandTotal = created.order.totalAmount + delivery;
+
     if (entries.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 8),
@@ -283,7 +337,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Send payment to:", style: theme.textTheme.labelLarge),
+            if (delivery > 0) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Items"),
+                  Text("Rs ${_money.format(created.order.totalAmount)}"),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Delivery"),
+                  Text("Rs ${_money.format(delivery)}"),
+                ],
+              ),
+              const Divider(),
+            ],
+            Text("Send Rs ${_money.format(grandTotal)} to:",
+                style: theme.textTheme.labelLarge),
             const SizedBox(height: 6),
             for (final e in entries)
               Padding(

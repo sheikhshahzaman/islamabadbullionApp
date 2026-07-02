@@ -107,6 +107,8 @@ class ShopApi {
     required String orderNumber,
     required String method,
     required String proofImagePath,
+    required String deliveryMethod,
+    String? deliveryAddress,
     String? referenceNumber,
   }) async {
     final request = http.MultipartRequest(
@@ -115,6 +117,10 @@ class ShopApi {
     );
     request.headers["Accept"] = "application/json";
     request.fields["method"] = method;
+    request.fields["delivery_method"] = deliveryMethod;
+    if (deliveryMethod == "delivery" && deliveryAddress != null) {
+      request.fields["delivery_address"] = deliveryAddress.trim();
+    }
     if (referenceNumber != null && referenceNumber.trim().isNotEmpty) {
       request.fields["reference_number"] = referenceNumber.trim();
     }

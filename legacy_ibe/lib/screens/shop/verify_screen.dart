@@ -216,6 +216,9 @@ class _ResultCard extends StatelessWidget {
       if (s("metal").isNotEmpty) MapEntry("Metal", s("metal")),
       if (s("karat").isNotEmpty) MapEntry("Karat", s("karat")),
       if (s("weight").isNotEmpty) MapEntry("Weight", s("weight")),
+      if (s("purity").isNotEmpty) MapEntry("Purity", s("purity")),
+      if (item["purity_tested"] != null)
+        MapEntry("Lab Tested", item["purity_tested"] == true ? "Yes" : "No"),
       if (s("status").isNotEmpty) MapEntry("Status", s("status")),
       if (item["scan_count"] != null)
         MapEntry("Times scanned", "${item["scan_count"]}"),

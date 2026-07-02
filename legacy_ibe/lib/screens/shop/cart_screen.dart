@@ -50,6 +50,26 @@ class CartScreen extends StatelessWidget {
                         horizontal: 12, vertical: 8),
                     child: Row(
                       children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: theme.dividerColor),
+                            ),
+                            child: line.product.imageUrl != null
+                                ? Image.network(
+                                    line.product.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        _cartImagePlaceholder(line.product.metal),
+                                  )
+                                : _cartImagePlaceholder(line.product.metal),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,6 +81,11 @@ class CartScreen extends StatelessWidget {
                                 "Rs ${money.format(line.product.currentPrice ?? 0)} each",
                                 style: theme.textTheme.bodySmall,
                               ),
+                              if (line.product.packagingCharge > 0)
+                                Text(
+                                  "+ Rs ${money.format(line.product.packagingCharge)} packaging",
+                                  style: theme.textTheme.bodySmall,
+                                ),
                               Text(
                                 "Rs ${money.format(line.lineTotal)}",
                                 style: theme.textTheme.titleSmall?.copyWith(
@@ -142,4 +167,14 @@ class CartScreen extends StatelessWidget {
             ),
     );
   }
+
+  Widget _cartImagePlaceholder(String metal) => Container(
+        color: metal == "silver"
+            ? const Color(0xFFD9D9D9)
+            : const Color(0xFFF0CBA3),
+        child: Icon(
+          metal == "silver" ? Icons.circle_outlined : Icons.toll,
+          color: metal == "silver" ? Colors.black45 : Colors.black54,
+        ),
+      );
 }

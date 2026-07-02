@@ -41,6 +41,7 @@ class ShopProduct {
   final double? currentPrice; // null = price unavailable right now
   final String? discountLabel;
   final int stockCount;
+  final double packagingCharge; // per unit, shown separately at checkout
 
   ShopProduct({
     required this.id,
@@ -54,6 +55,7 @@ class ShopProduct {
     required this.currentPrice,
     required this.discountLabel,
     required this.stockCount,
+    this.packagingCharge = 0,
   });
 
   factory ShopProduct.fromJson(Map<String, dynamic> json) {
@@ -71,6 +73,7 @@ class ShopProduct {
       discountLabel:
           json["discount_label"] == null ? null : _s(json["discount_label"]),
       stockCount: _i(json["stock_count"]),
+      packagingCharge: _d(json["packaging_charge"]),
     );
   }
 }
@@ -82,6 +85,8 @@ class OrderLine {
   final double quantity;
   final String? unit; // non-null for metal-by-weight Buy/Sell lines
   final double unitPrice;
+  final double packagingCharge; // per unit
+  final double packagingTotal; // packagingCharge * quantity
   final double lineTotal;
 
   OrderLine({
@@ -91,6 +96,8 @@ class OrderLine {
     required this.quantity,
     required this.unit,
     required this.unitPrice,
+    required this.packagingCharge,
+    required this.packagingTotal,
     required this.lineTotal,
   });
 
@@ -101,6 +108,8 @@ class OrderLine {
         quantity: _d(json["quantity"]),
         unit: json["unit"] == null ? null : _s(json["unit"]),
         unitPrice: _d(json["unit_price"]),
+        packagingCharge: _d(json["packaging_charge"]),
+        packagingTotal: _d(json["packaging_total"]),
         lineTotal: _d(json["line_total"]),
       );
 
@@ -139,6 +148,10 @@ class ShopOrder {
   final String customerName;
   final String customerPhone;
   final double totalAmount;
+  final String deliveryMethod; // pickup | delivery
+  final String? deliveryAddress;
+  final double deliveryCharge;
+  final double grandTotal;
   final List<OrderLine> items;
   final OrderPayment? payment;
 
@@ -149,6 +162,10 @@ class ShopOrder {
     required this.customerName,
     required this.customerPhone,
     required this.totalAmount,
+    required this.deliveryMethod,
+    required this.deliveryAddress,
+    required this.deliveryCharge,
+    required this.grandTotal,
     required this.items,
     required this.payment,
   });
@@ -160,6 +177,15 @@ class ShopOrder {
         customerName: _s(json["customer_name"]),
         customerPhone: _s(json["customer_phone"]),
         totalAmount: _d(json["total_amount"]),
+        deliveryMethod:
+            json["delivery_method"] == null || _s(json["delivery_method"]).isEmpty
+                ? "pickup"
+                : _s(json["delivery_method"]),
+        deliveryAddress: json["delivery_address"]?.toString(),
+        deliveryCharge: _d(json["delivery_charge"]),
+        grandTotal: json["grand_total"] != null
+            ? _d(json["grand_total"])
+            : _d(json["total_amount"]) + _d(json["delivery_charge"]),
         items: (json["items"] as List? ?? const [])
             .whereType<Map>()
             .map((e) => OrderLine.fromJson(Map<String, dynamic>.from(e)))
