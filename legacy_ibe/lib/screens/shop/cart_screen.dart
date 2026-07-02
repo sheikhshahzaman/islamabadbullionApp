@@ -85,6 +85,14 @@ class CartScreen extends StatelessWidget {
                                 Text(
                                   "+ Rs ${money.format(line.product.packagingCharge)} packaging",
                                   style: theme.textTheme.bodySmall,
+                                )
+                              else
+                                Text(
+                                  "Free packaging",
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: const Color(0xFF2E9E5B),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               Text(
                                 "Rs ${money.format(line.lineTotal)}",

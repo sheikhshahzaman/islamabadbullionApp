@@ -78,6 +78,14 @@ class OrderConfirmationScreen extends StatelessWidget {
                                   Text(
                                     "+ Rs ${money.format(item.packagingCharge)} packaging × ${item.quantityLabel}",
                                     style: theme.textTheme.bodySmall,
+                                  )
+                                else if (!item.isMetalLine)
+                                  Text(
+                                    "Free packaging",
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: const Color(0xFF2E9E5B),
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                               ],
                             ),
