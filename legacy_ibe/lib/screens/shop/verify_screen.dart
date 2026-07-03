@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:intl/intl.dart";
 import "package:provider/provider.dart";
 
 import "../../models/shop_models.dart";
@@ -210,6 +211,18 @@ class _ResultCard extends StatelessWidget {
     final item = result.item;
     String s(String key) => (item[key] ?? "").toString();
 
+    // Sold pieces get the amber "authentic but already sold" treatment,
+    // matching the website's verification page.
+    final isSold = s("status").toLowerCase() == "sold";
+    String? soldOn;
+    final soldAt = DateTime.tryParse(s("sold_at"));
+    if (soldAt != null) {
+      soldOn = DateFormat("MMMM d, y").format(soldAt.toLocal());
+    }
+
+    final headColor = isSold ? const Color(0xFFB45309) : Colors.green.shade700;
+    final iconColor = isSold ? const Color(0xFFF59E0B) : Colors.green.shade600;
+
     final rows = <MapEntry<String, String>>[
       MapEntry("Serial", s("serial_number")),
       if (s("product_name").isNotEmpty) MapEntry("Product", s("product_name")),
@@ -219,7 +232,7 @@ class _ResultCard extends StatelessWidget {
       if (s("purity").isNotEmpty) MapEntry("Purity", s("purity")),
       if (item["purity_tested"] != null)
         MapEntry("Lab Tested", item["purity_tested"] == true ? "Yes" : "No"),
-      if (s("status").isNotEmpty) MapEntry("Status", s("status")),
+      if (s("status").isNotEmpty && !isSold) MapEntry("Status", s("status")),
       if (item["scan_count"] != null)
         MapEntry("Times scanned", "${item["scan_count"]}"),
     ];
@@ -232,17 +245,52 @@ class _ResultCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.verified, color: Colors.green.shade600, size: 32),
+                Icon(Icons.verified, color: iconColor, size: 32),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    "Genuine item — verified",
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: Colors.green.shade700),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isSold
+                            ? "Authentic product"
+                            : "Genuine item — verified",
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(color: headColor),
+                      ),
+                      if (isSold)
+                        Text(
+                          "This piece has been sold",
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: headColor),
+                        ),
+                    ],
                   ),
                 ),
               ],
             ),
+            if (isSold)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0x1AF59E0B),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0x33F59E0B)),
+                ),
+                child: Text(
+                  soldOn != null
+                      ? "This piece was sold on $soldOn"
+                      : "This piece has been sold",
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFFB45309),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             const Divider(height: 20),
             for (final row in rows)
               Padding(
