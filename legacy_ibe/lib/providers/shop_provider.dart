@@ -25,13 +25,13 @@ class ShopProvider extends ChangeNotifier {
 
   ShopApi get api => _api;
 
-  Future<void> load({bool refresh = false}) async {
+  Future<void> load({bool refresh = false, bool silent = false}) async {
     if (_loading) return;
     if (_products.isNotEmpty && !refresh) return;
 
-    _loading = true;
+    if (!silent) _loading = true;
     _error = null;
-    notifyListeners();
+    if (!silent) notifyListeners();
 
     try {
       final results = await Future.wait([
@@ -44,7 +44,7 @@ class ShopProvider extends ChangeNotifier {
       _error = "Could not load products. Please check your connection.";
       if (kDebugMode) debugPrint("Shop load failed: $e");
     } finally {
-      _loading = false;
+      if (!silent) _loading = false;
       notifyListeners();
     }
   }

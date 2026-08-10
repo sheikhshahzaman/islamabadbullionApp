@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:intl/intl.dart";
 import "package:provider/provider.dart";
@@ -6,8 +8,41 @@ import "../../providers/cart_provider.dart";
 import "../../providers/shop_provider.dart";
 import "checkout_screen.dart";
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCartPrices();
+      _refreshTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (_) => _refreshCartPrices(),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshCartPrices() async {
+    if (!mounted) return;
+    final shop = context.read<ShopProvider>();
+    await shop.load(refresh: true, silent: true);
+    if (!mounted) return;
+    context.read<CartProvider>().refreshProducts(shop.products);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +66,11 @@ class CartScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.shopping_cart_outlined,
-                      size: 56, color: Colors.grey.shade500),
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 56,
+                    color: Colors.grey.shade500,
+                  ),
                   const SizedBox(height: 12),
                   const Text("Your cart is empty"),
                 ],
@@ -47,7 +85,9 @@ class CartScreen extends StatelessWidget {
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
                         ClipRRect(
@@ -64,7 +104,9 @@ class CartScreen extends StatelessWidget {
                                     line.product.imageUrl!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, _, _) =>
-                                        _cartImagePlaceholder(line.product.metal),
+                                        _cartImagePlaceholder(
+                                          line.product.metal,
+                                        ),
                                   )
                                 : _cartImagePlaceholder(line.product.metal),
                           ),
@@ -74,8 +116,10 @@ class CartScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(line.product.name,
-                                  style: theme.textTheme.titleSmall),
+                              Text(
+                                line.product.name,
+                                style: theme.textTheme.titleSmall,
+                              ),
                               const SizedBox(height: 2),
                               Text(
                                 "Rs ${money.format(line.product.currentPrice ?? 0)} each",
@@ -97,7 +141,8 @@ class CartScreen extends StatelessWidget {
                               Text(
                                 "Rs ${money.format(line.lineTotal)}",
                                 style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -108,8 +153,10 @@ class CartScreen extends StatelessWidget {
                               .decrease(line.product.id),
                           icon: const Icon(Icons.remove_circle_outline),
                         ),
-                        Text("${line.quantity}",
-                            style: theme.textTheme.titleMedium),
+                        Text(
+                          "${line.quantity}",
+                          style: theme.textTheme.titleMedium,
+                        ),
                         IconButton(
                           onPressed: () => context
                               .read<CartProvider>()
@@ -117,9 +164,9 @@ class CartScreen extends StatelessWidget {
                           icon: const Icon(Icons.add_circle_outline),
                         ),
                         IconButton(
-                          onPressed: () => context
-                              .read<CartProvider>()
-                              .remove(line.product.id),
+                          onPressed: () => context.read<CartProvider>().remove(
+                            line.product.id,
+                          ),
                           icon: const Icon(Icons.delete_outline),
                         ),
                       ],
@@ -143,14 +190,17 @@ class CartScreen extends StatelessWidget {
                           Text("Subtotal", style: theme.textTheme.bodySmall),
                           Text(
                             "Rs ${money.format(cart.subtotal)}",
-                            style: theme.textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     FilledButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
+                        await _refreshCartPrices();
+                        if (!context.mounted) return;
                         final api = context.read<ShopProvider>().api;
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -177,12 +227,12 @@ class CartScreen extends StatelessWidget {
   }
 
   Widget _cartImagePlaceholder(String metal) => Container(
-        color: metal == "silver"
-            ? const Color(0xFFD9D9D9)
-            : const Color(0xFFF0CBA3),
-        child: Icon(
-          metal == "silver" ? Icons.circle_outlined : Icons.toll,
-          color: metal == "silver" ? Colors.black45 : Colors.black54,
-        ),
-      );
+    color: metal == "silver"
+        ? const Color(0xFFD9D9D9)
+        : const Color(0xFFF0CBA3),
+    child: Icon(
+      metal == "silver" ? Icons.circle_outlined : Icons.toll,
+      color: metal == "silver" ? Colors.black45 : Colors.black54,
+    ),
+  );
 }

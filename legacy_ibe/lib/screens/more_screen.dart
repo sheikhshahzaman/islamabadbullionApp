@@ -9,6 +9,7 @@ import "sell_screen.dart";
 import "legal_page_screen.dart";
 import "zakat_screen.dart";
 import "shop/products_screen.dart";
+import "shop/order_tracking_screen.dart";
 import "shop/verify_screen.dart";
 
 /// "More" hub. Buy, Sell and tools live here; Shop, Spot, WhatsApp and Contact
@@ -17,8 +18,6 @@ class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
   static const Color _bg = Color(0xFF1A5249);
-  static const Color _card = Color(0xFF0A3C30);
-  static const Color _accent = Color(0xFFdfa273);
 
   String _t(BuildContext context, String en, String ur) =>
       context.watch<AppSettings>().isUrdu ? ur : en;
@@ -78,9 +77,21 @@ class MoreScreen extends StatelessWidget {
           "Browse bars and coins, order with delivery",
           "بارز اور سکے دیکھیں، ڈیلیوری کے ساتھ آرڈر کریں",
         ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ProductsScreen()),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ProductsScreen())),
+      ),
+      _MoreItem(
+        icon: Icons.local_shipping_outlined,
+        title: _t(context, "Track Order", "آرڈر ٹریک کریں"),
+        subtitle: _t(
+          context,
+          "Enter your order number to see the latest status",
+          "اپنا آرڈر نمبر درج کر کے تازہ اسٹیٹس دیکھیں",
         ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const OrderTrackingScreen())),
       ),
       _MoreItem(
         icon: Icons.qr_code_scanner,
@@ -102,9 +113,9 @@ class MoreScreen extends StatelessWidget {
           "Enter the serial printed on your item to verify it",
           "اپنی چیز پر درج سیریل نمبر سے تصدیق کریں",
         ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const VerifyScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const VerifyScreen())),
       ),
       _MoreItem(
         icon: Icons.calculate_outlined,
@@ -114,9 +125,9 @@ class MoreScreen extends StatelessWidget {
           "Estimate your zakat based on current rates",
           "موجودہ ریٹ کے مطابق زکوٰۃ کا حساب لگائیں",
         ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ZakatScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ZakatScreen())),
       ),
     ];
 
@@ -241,8 +252,9 @@ class MoreScreen extends StatelessWidget {
           const SizedBox(width: Brand.s16),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  isUrdu ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUrdu
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Text(
                   _t(context, "More", "مزید"),
@@ -360,18 +372,18 @@ class _MoreTile extends StatelessWidget {
                     const SizedBox(height: Brand.s4),
                     Text(
                       item.subtitle,
-                      style:
-                          Brand.sans(12.5, color: Brand.textMuted, height: 1.35),
+                      style: Brand.sans(
+                        12.5,
+                        color: Brand.textMuted,
+                        height: 1.35,
+                      ),
                       textAlign: isUrdu ? TextAlign.right : TextAlign.left,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: Brand.s12),
-              Icon(
-                Icons.chevron_right,
-                color: _accent.withValues(alpha: 0.85),
-              ),
+              Icon(Icons.chevron_right, color: _accent.withValues(alpha: 0.85)),
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
@@ -20,13 +21,32 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   final _money = NumberFormat("#,##0");
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ShopProvider>().load();
+      _refreshCatalog(silent: false);
+      _refreshTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (_) => _refreshCatalog(),
+      );
     });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshCatalog({bool force = true, bool silent = true}) async {
+    if (!mounted) return;
+    final shop = context.read<ShopProvider>();
+    await shop.load(refresh: force, silent: silent);
+    if (!mounted) return;
+    context.read<CartProvider>().refreshProducts(shop.products);
   }
 
   @override
@@ -50,10 +70,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           color: Brand.gold,
           backgroundColor: Brand.cardHigh,
           onRefresh: () async {
-            await shop.load(refresh: true);
-            if (context.mounted) {
-              context.read<CartProvider>().refreshProducts(shop.products);
-            }
+            await _refreshCatalog(silent: false);
           },
           child: _body(shop, cart),
         ),
@@ -72,8 +89,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: Brand.s24),
         children: [
           const SizedBox(height: 120),
-          Icon(Icons.cloud_off, size: 52, color: Brand.gold.withValues(alpha: 0.7))
-              .entrance(),
+          Icon(
+            Icons.cloud_off,
+            size: 52,
+            color: Brand.gold.withValues(alpha: 0.7),
+          ).entrance(),
           const SizedBox(height: Brand.s16),
           Center(
             child: Text(
@@ -114,7 +134,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
           ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(Brand.s12, Brand.s4, Brand.s12, Brand.s24),
+          padding: const EdgeInsets.fromLTRB(
+            Brand.s12,
+            Brand.s4,
+            Brand.s12,
+            Brand.s24,
+          ),
           sliver: SliverList.separated(
             itemCount: shop.products.length,
             separatorBuilder: (_, _) => const SizedBox(height: Brand.s12),
@@ -134,8 +159,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: Brand.s24),
       children: [
         const SizedBox(height: 140),
-        Icon(Icons.diamond_outlined, size: 56, color: Brand.gold.withValues(alpha: 0.7))
-            .entrance(),
+        Icon(
+          Icons.diamond_outlined,
+          size: 56,
+          color: Brand.gold.withValues(alpha: 0.7),
+        ).entrance(),
         const SizedBox(height: Brand.s16),
         Center(
           child: Text(
@@ -154,7 +182,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
       slivers: [
         SliverToBoxAdapter(child: _categoryChips(shop)),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(Brand.s12, Brand.s4, Brand.s12, Brand.s24),
+          padding: const EdgeInsets.fromLTRB(
+            Brand.s12,
+            Brand.s4,
+            Brand.s12,
+            Brand.s24,
+          ),
           sliver: SliverList.separated(
             itemCount: 7,
             separatorBuilder: (_, _) => const SizedBox(height: Brand.s12),
@@ -169,7 +202,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget _categoryChips(ShopProvider shop) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(Brand.s12, Brand.s12, Brand.s12, Brand.s8),
+      padding: const EdgeInsets.fromLTRB(
+        Brand.s12,
+        Brand.s12,
+        Brand.s12,
+        Brand.s8,
+      ),
       child: Row(
         children: [
           Padding(
@@ -196,15 +234,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
 }
 
 ButtonStyle _goldButtonStyle() => FilledButton.styleFrom(
-      backgroundColor: Brand.gold,
-      foregroundColor: const Color(0xFF1A1207),
-      disabledBackgroundColor: Brand.gold.withValues(alpha: 0.25),
-      disabledForegroundColor: Brand.text.withValues(alpha: 0.4),
-      textStyle: Brand.sans(13, weight: FontWeight.w800),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Brand.rSm),
-      ),
-    );
+  backgroundColor: Brand.gold,
+  foregroundColor: const Color(0xFF1A1207),
+  disabledBackgroundColor: Brand.gold.withValues(alpha: 0.25),
+  disabledForegroundColor: Brand.text.withValues(alpha: 0.4),
+  textStyle: Brand.sans(13, weight: FontWeight.w800),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Brand.rSm)),
+);
 
 /// Gold pill chip for category filtering. Selected = gold fill + dark text;
 /// unselected = gold hairline outline.
@@ -261,9 +297,9 @@ class _CartButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       tooltip: "Cart",
-      onPressed: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const CartScreen()),
-      ),
+      onPressed: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CartScreen())),
       icon: Badge(
         isLabelVisible: count > 0,
         backgroundColor: Brand.gold,
@@ -315,7 +351,11 @@ class _ProductCard extends StatelessWidget {
               children: [
                 Text(
                   product.name,
-                  style: Brand.sans(15, weight: FontWeight.w600, color: Brand.text),
+                  style: Brand.sans(
+                    15,
+                    weight: FontWeight.w600,
+                    color: Brand.text,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -337,13 +377,19 @@ class _ProductCard extends StatelessWidget {
                             : "Price on request",
                         style: price != null
                             ? Brand.number(17, color: Brand.gold)
-                            : Brand.sans(13, color: Brand.textMuted, weight: FontWeight.w600),
+                            : Brand.sans(
+                                13,
+                                color: Brand.textMuted,
+                                weight: FontWeight.w600,
+                              ),
                       ),
                     ),
                     if (product.discountLabel != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: Brand.gold.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(8),
@@ -351,7 +397,11 @@ class _ProductCard extends StatelessWidget {
                         ),
                         child: Text(
                           product.discountLabel!,
-                          style: Brand.label(10, color: Brand.goldBright, spacing: 0.4),
+                          style: Brand.label(
+                            10,
+                            color: Brand.goldBright,
+                            spacing: 0.4,
+                          ),
                         ),
                       ),
                   ],
@@ -386,12 +436,12 @@ class _ProductCard extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        decoration: BoxDecoration(gradient: Brand.cardGradient),
-        child: Icon(
-          product.metal == "silver" ? Icons.circle_outlined : Icons.toll,
-          color: Brand.gold.withValues(alpha: 0.6),
-        ),
-      );
+    decoration: BoxDecoration(gradient: Brand.cardGradient),
+    child: Icon(
+      product.metal == "silver" ? Icons.circle_outlined : Icons.toll,
+      color: Brand.gold.withValues(alpha: 0.6),
+    ),
+  );
 }
 
 /// Shimmer skeleton mirroring the [_ProductCard] layout for the loading state.

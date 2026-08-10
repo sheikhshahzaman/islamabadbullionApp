@@ -12,7 +12,7 @@ class PricesApi {
   final ApiClient _client;
   PricesApi(this._client);
 
-  static const double _gramsPerOz = 31.1034768;
+  static const double _gramsPerOz = 31.1035;
   static const double _gramsPerTola = 11.6638038;
 
   Future<MetalPricesResponse> fetchLatest({required String currency}) async {
@@ -45,30 +45,31 @@ class PricesApi {
     // --- helpers over the gold/silver matrices ---
     double goldAt(String karat, String unit, String side) =>
         conv(d(m(m(gold[karat])[unit])[side]));
-    double silverAt(String unit, String side) =>
-        conv(d(m(silver[unit])[side]));
+    double silverAt(String unit, String side) => conv(d(m(silver[unit])[side]));
 
     Map<String, dynamic> goldKaratPerGram(String side) => {
-          "24K": goldAt("24k", "gram", side),
-          "Rawa": goldAt("rawa", "gram", side),
-          "22K": goldAt("22k", "gram", side),
-          "21K": goldAt("21k", "gram", side),
-          "18K": goldAt("18k", "gram", side),
-        };
+      "24K": goldAt("24k", "gram", side),
+      "Rawa": goldAt("rawa", "gram", side),
+      "22K": goldAt("22k", "gram", side),
+      "21K": goldAt("21k", "gram", side),
+      "18K": goldAt("18k", "gram", side),
+    };
 
     Map<String, dynamic> silverByQty(String side) => {
-          "Gram": silverAt("gram", side),
-          "10 Gram": silverAt("10_gram", side),
-          "Tola": silverAt("tola", side),
-          "10 Tola": silverAt("10_tola", side),
-          "1 KG": silverAt("kg", side),
-        };
+      "10 Tola (QR Packaging)": silverAt("10_tola_qr", side) > 0
+          ? silverAt("10_tola_qr", side)
+          : silverAt("10_tola", side),
+      "Tola": silverAt("tola", side),
+      "10 Tola": silverAt("10_tola", side),
+      "5 Tola": silverAt("5_tola", side),
+      "1 KG": silverAt("kg", side),
+    };
 
     Map<String, dynamic> block(double perGram, double perTola) => {
-          "per_oz": perGram * _gramsPerOz,
-          "per_gram": perGram,
-          "per_tola": perTola,
-        };
+      "per_oz": perGram * _gramsPerOz,
+      "per_gram": perGram,
+      "per_tola": perTola,
+    };
 
     final metals = <Map<String, dynamic>>[];
 
@@ -79,8 +80,14 @@ class PricesApi {
         "code": "XAU",
         "name": "Gold",
         ...block(g24Gram, goldAt("24k", "tola", "base")),
-        "sell": block(goldAt("24k", "gram", "sell"), goldAt("24k", "tola", "sell")),
-        "buy": block(goldAt("24k", "gram", "buy"), goldAt("24k", "tola", "buy")),
+        "sell": block(
+          goldAt("24k", "gram", "sell"),
+          goldAt("24k", "tola", "sell"),
+        ),
+        "buy": block(
+          goldAt("24k", "gram", "buy"),
+          goldAt("24k", "tola", "buy"),
+        ),
         "gold_by_karat_per_gram": goldKaratPerGram("base"),
         "gold_by_karat_per_gram_sell": goldKaratPerGram("sell"),
         "gold_by_karat_per_gram_buy": goldKaratPerGram("buy"),
@@ -136,8 +143,7 @@ class PricesApi {
 
     return MetalPricesResponse.fromJson({
       "success": metals.isNotEmpty,
-      "timestamp":
-          (updated ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000,
+      "timestamp": (updated ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000,
       "currency": currency,
       "metals": metals,
       "spot_gold_bid": spotGoldBid,

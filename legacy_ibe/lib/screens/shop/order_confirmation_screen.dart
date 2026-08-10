@@ -5,6 +5,7 @@ import "package:url_launcher/url_launcher.dart";
 
 import "../../models/shop_models.dart";
 import "../../providers/site_config_provider.dart";
+import "order_tracking_screen.dart";
 
 class OrderConfirmationScreen extends StatelessWidget {
   final ShopOrder order;
@@ -13,9 +14,12 @@ class OrderConfirmationScreen extends StatelessWidget {
   Future<void> _openWhatsApp(String number, String orderNumber) async {
     final digits = number.replaceAll(RegExp(r"[^0-9]"), "");
     final text = Uri.encodeComponent(
-        "Hi, I placed an order #$orderNumber. Please confirm.");
-    await launchUrl(Uri.parse("https://wa.me/$digits?text=$text"),
-        mode: LaunchMode.externalApplication);
+      "Hi, I placed an order #$orderNumber. Please confirm.",
+    );
+    await launchUrl(
+      Uri.parse("https://wa.me/$digits?text=$text"),
+      mode: LaunchMode.externalApplication,
+    );
   }
 
   Future<void> _callPhone(String number) async {
@@ -36,8 +40,10 @@ class OrderConfirmationScreen extends StatelessWidget {
           Icon(Icons.check_circle, size: 64, color: Colors.green.shade600),
           const SizedBox(height: 12),
           Center(
-            child: Text("Thank you, ${order.customerName}!",
-                style: theme.textTheme.titleLarge),
+            child: Text(
+              "Thank you, ${order.customerName}!",
+              style: theme.textTheme.titleLarge,
+            ),
           ),
           const SizedBox(height: 4),
           Center(
@@ -58,8 +64,11 @@ class OrderConfirmationScreen extends StatelessWidget {
                   _row(theme, "Order number", order.orderNumber, mono: true),
                   _row(theme, "Status", _statusLabel(order.status)),
                   if (order.payment != null)
-                    _row(theme, "Payment method",
-                        _methodLabel(order.payment!.method)),
+                    _row(
+                      theme,
+                      "Payment method",
+                      _methodLabel(order.payment!.method),
+                    ),
                   const Divider(height: 20),
                   for (final item in order.items)
                     Padding(
@@ -71,9 +80,11 @@ class OrderConfirmationScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(item.isMetalLine
-                                    ? item.productName
-                                    : "${item.productName} × ${item.quantityLabel}"),
+                                Text(
+                                  item.isMetalLine
+                                      ? item.productName
+                                      : "${item.productName} × ${item.quantityLabel}",
+                                ),
                                 if (item.packagingCharge > 0)
                                   Text(
                                     "+ Rs ${money.format(item.packagingCharge)} packaging × ${item.quantityLabel}",
@@ -125,13 +136,16 @@ class OrderConfirmationScreen extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text("Total",
-                            style: theme.textTheme.titleMedium),
+                        child: Text(
+                          "Total",
+                          style: theme.textTheme.titleMedium,
+                        ),
                       ),
                       Text(
                         "Rs ${money.format(order.grandTotal)}",
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -165,13 +179,18 @@ class OrderConfirmationScreen extends StatelessWidget {
                       contentPadding: EdgeInsets.zero,
                       leading: const CircleAvatar(
                         backgroundColor: Color(0xFF25D366),
-                        child: Icon(Icons.chat_bubble_rounded,
-                            color: Colors.white, size: 18),
+                        child: Icon(
+                          Icons.chat_bubble_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                       title: const Text("WhatsApp"),
                       subtitle: Text(config.contactWhatsapp),
                       onTap: () => _openWhatsApp(
-                          config.contactWhatsapp, order.orderNumber),
+                        config.contactWhatsapp,
+                        order.orderNumber,
+                      ),
                     ),
                   if (config.contactPhone.isNotEmpty)
                     ListTile(
@@ -184,8 +203,9 @@ class OrderConfirmationScreen extends StatelessWidget {
                   if (config.contactAddress.isNotEmpty)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading:
-                          const CircleAvatar(child: Icon(Icons.place_outlined)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.place_outlined),
+                      ),
                       title: const Text("Visit Us"),
                       subtitle: Text(config.contactAddress),
                     ),
@@ -194,6 +214,17 @@ class OrderConfirmationScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    OrderTrackingScreen(initialOrderNumber: order.orderNumber),
+              ),
+            ),
+            icon: const Icon(Icons.local_shipping_outlined),
+            label: const Text("Track this order"),
+          ),
+          const SizedBox(height: 8),
           FilledButton(
             onPressed: () =>
                 Navigator.of(context).popUntil((route) => route.isFirst),
@@ -204,8 +235,12 @@ class OrderConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _row(ThemeData theme, String label, String value,
-      {bool mono = false}) {
+  Widget _row(
+    ThemeData theme,
+    String label,
+    String value, {
+    bool mono = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -230,19 +265,21 @@ class OrderConfirmationScreen extends StatelessWidget {
   }
 
   String _statusLabel(String status) => switch (status) {
-        "pending" => "Pending",
-        "awaiting_verification" => "Awaiting payment verification",
-        "confirmed" => "Confirmed",
-        "processing" => "Processing",
-        "delivered" => "Delivered",
-        _ => status,
-      };
+    "pending" => "Order pending",
+    "awaiting_verification" => "Order pending",
+    "confirmed" => "Order confirmed",
+    "processing" => "Order dispatched",
+    "dispatched" => "Order dispatched",
+    "delivered" => "Order delivered",
+    "cancelled" => "Order cancelled",
+    _ => status,
+  };
 
   String _methodLabel(String method) => switch (method) {
-        "easypaisa" => "EasyPaisa",
-        "jazzcash" => "JazzCash",
-        "raast" => "Raast",
-        "bank_transfer" => "Bank Transfer",
-        _ => method,
-      };
+    "easypaisa" => "EasyPaisa",
+    "jazzcash" => "JazzCash",
+    "raast" => "Raast",
+    "bank_transfer" => "Bank Transfer",
+    _ => method,
+  };
 }

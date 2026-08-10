@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:image_picker/image_picker.dart";
 import "package:intl/intl.dart";
@@ -44,6 +46,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   int _step = 0;
   bool _busy = false;
   String? _error;
+  Timer? _refreshTimer;
 
   CreatedOrder? _created;
   // Only bank transfer is offered, so it's pre-selected — nothing to choose.
@@ -52,12 +55,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _deliveryMethod = "pickup";
   XFile? _proof;
 
-  static const _methods = <String, String>{
-    "bank_transfer": "Bank Transfer",
-  };
+  static const _methods = <String, String>{"bank_transfer": "Bank Transfer"};
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _refreshCreatedOrder(),
+    );
+  }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _referenceCtrl.dispose();
@@ -82,11 +93,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _created = created;
         _step = 1;
       });
+      await _refreshCreatedOrder();
     } catch (e) {
-      setState(() => _error =
-          "Could not create the order. Please check your connection and try again.");
+      setState(
+        () => _error =
+            "Could not create the order. Please check your connection and try again.",
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _refreshCreatedOrder() async {
+    final created = _created;
+    if (!mounted || created == null || _busy) return;
+
+    try {
+      final refreshed = await context.read<ShopProvider>().api.fetchOrder(
+        created.order.orderNumber,
+      );
+      if (!mounted) return;
+      setState(() {
+        _created = CreatedOrder(
+          order: refreshed.order,
+          paymentAccounts: refreshed.paymentAccounts.accounts.isEmpty
+              ? created.paymentAccounts
+              : refreshed.paymentAccounts,
+        );
+      });
+    } catch (_) {
+      // Keep checkout usable if a background refresh fails.
     }
   }
 
@@ -106,6 +142,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (created == null || proof == null || _method.isEmpty) return;
 
     final api = context.read<ShopProvider>().api;
+    await _refreshCreatedOrder();
 
     setState(() {
       _busy = true;
@@ -118,7 +155,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         method: _method,
         proofImagePath: proof.path,
         deliveryMethod: _deliveryMethod,
-        deliveryAddress: _deliveryMethod == "delivery" ? _addressCtrl.text : null,
+        deliveryAddress: _deliveryMethod == "delivery"
+            ? _addressCtrl.text
+            : null,
         referenceNumber: _referenceCtrl.text,
       );
       widget.onOrderComplete?.call();
@@ -130,10 +169,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         (route) => route.isFirst,
       );
     } catch (e) {
-      setState(() => _error = e
-          .toString()
-          .replaceFirst("Exception: ", "")
-          .replaceFirst("Upload failed", "Upload failed —"));
+      setState(
+        () => _error = e
+            .toString()
+            .replaceFirst("Exception: ", "")
+            .replaceFirst("Upload failed", "Upload failed —"),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -188,7 +229,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           _errorBox(),
           Text(
-              "Order total (estimated): Rs ${_money.format(widget.estimatedTotal)}"),
+            "Order total (estimated): Rs ${_money.format(widget.estimatedTotal)}",
+          ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _nameCtrl,
@@ -197,8 +239,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               labelText: "Full name",
               border: OutlineInputBorder(),
             ),
-            validator: (v) =>
-                (v == null || v.trim().length < 2) ? "Please enter your name" : null,
+            validator: (v) => (v == null || v.trim().length < 2)
+                ? "Please enter your name"
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -218,7 +261,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             onPressed: _busy ? null : _createOrder,
             child: _busy
                 ? const SizedBox(
-                    height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text("Continue"),
           ),
         ],
@@ -230,8 +276,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final created = _created;
     if (created == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final deliveryCharge =
-        context.watch<SiteConfigProvider>().config.deliveryCharge;
+    final deliveryCharge = context
+        .watch<SiteConfigProvider>()
+        .config
+        .deliveryCharge;
 
     final addressFilled = _addressCtrl.text.trim().isNotEmpty;
     final canContinue =
@@ -264,9 +312,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           // ignore: deprecated_member_use
           onChanged: (v) => setState(() => _deliveryMethod = v ?? "pickup"),
           title: const Text("Delivery"),
-          subtitle: Text(deliveryCharge > 0
-              ? "Rs ${_money.format(deliveryCharge)}"
-              : "Free Delivery"),
+          subtitle: Text(
+            deliveryCharge > 0
+                ? "Rs ${_money.format(deliveryCharge)}"
+                : "Free Delivery",
+          ),
           contentPadding: EdgeInsets.zero,
         ),
         if (_deliveryMethod == "delivery") ...[
@@ -305,10 +355,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _accountDetails(
-      CreatedOrder created, ThemeData theme, double deliveryCharge) {
+    CreatedOrder created,
+    ThemeData theme,
+    double deliveryCharge,
+  ) {
     final details = created.paymentAccounts.forMethod(_method);
-    final entries =
-        details.entries.where((e) => e.value.trim().isNotEmpty).toList();
+    final entries = details.entries
+        .where((e) => e.value.trim().isNotEmpty)
+        .toList();
 
     final delivery = _deliveryMethod == "delivery" ? deliveryCharge : 0.0;
     final grandTotal = created.order.totalAmount + delivery;
@@ -321,15 +375,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     String label(String key) => switch (key) {
-          "number" => "Account number",
-          "name" => "Account name",
-          "id" => "Raast ID",
-          "bank_name" => "Bank",
-          "account_title" => "Account title",
-          "account_number" => "Account number",
-          "iban" => "IBAN",
-          _ => key,
-        };
+      "number" => "Account number",
+      "name" => "Account name",
+      "id" => "Raast ID",
+      "bank_name" => "Bank",
+      "account_title" => "Account title",
+      "account_number" => "Account number",
+      "iban" => "IBAN",
+      _ => key,
+    };
 
     return Card(
       child: Padding(
@@ -354,8 +408,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const Divider(),
             ],
-            Text("Send Rs ${_money.format(grandTotal)} to:",
-                style: theme.textTheme.labelLarge),
+            Text(
+              "Send Rs ${_money.format(grandTotal)} to:",
+              style: theme.textTheme.labelLarge,
+            ),
             const SizedBox(height: 6),
             for (final e in entries)
               Padding(
@@ -364,14 +420,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   children: [
                     SizedBox(
                       width: 130,
-                      child:
-                          Text(label(e.key), style: theme.textTheme.bodySmall),
+                      child: Text(
+                        label(e.key),
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ),
                     Expanded(
                       child: SelectableText(
                         e.value,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -397,7 +456,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         OutlinedButton.icon(
           onPressed: _busy ? null : _pickProof,
           icon: const Icon(Icons.image_outlined),
-          label: Text(_proof == null ? "Choose screenshot" : "Change screenshot"),
+          label: Text(
+            _proof == null ? "Choose screenshot" : "Change screenshot",
+          ),
         ),
         if (_proof != null)
           Padding(
@@ -421,7 +482,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           onPressed: (_proof == null || _busy) ? null : _submitPayment,
           child: _busy
               ? const SizedBox(
-                  height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text("Submit order"),
         ),
       ],
