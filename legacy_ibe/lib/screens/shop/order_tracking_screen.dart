@@ -104,7 +104,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _track(),
                       decoration: const InputDecoration(
-                        hintText: "ORD-XXXXXXXX-0000000000",
+                        hintText: "XXXXXXXX-0000000000",
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -342,8 +342,7 @@ class OrderNumberFormatter {
   static String format(String value) {
     final cleaned = value
         .replaceAll(RegExp(r"[^A-Za-z0-9]"), "")
-        .toUpperCase()
-        .replaceFirst(RegExp(r"^ORD"), "");
+        .toUpperCase();
 
     if (cleaned.isEmpty) return "";
 
@@ -351,7 +350,7 @@ class OrderNumberFormatter {
     final first = body.length > 8 ? body.substring(0, 8) : body;
     final second = body.length > 8 ? body.substring(8) : "";
 
-    return second.isEmpty ? "ORD-$first" : "ORD-$first-$second";
+    return second.isEmpty ? first : "$first-$second";
   }
 }
 
