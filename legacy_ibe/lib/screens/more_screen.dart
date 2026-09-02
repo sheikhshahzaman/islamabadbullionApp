@@ -4,16 +4,15 @@ import "package:provider/provider.dart";
 import "../providers/app_settings.dart";
 import "../theme/brand.dart";
 import "../widgets/brand_kit.dart";
-import "buy_screen.dart";
-import "sell_screen.dart";
+import "buy_calculator_screen.dart";
 import "legal_page_screen.dart";
 import "zakat_screen.dart";
 import "shop/products_screen.dart";
 import "shop/order_tracking_screen.dart";
 import "shop/verify_screen.dart";
 
-/// "More" hub. Buy, Sell and tools live here; Shop, Spot, WhatsApp and Contact
-/// are on the bottom navigation bar.
+/// "More" hub. Tools live here; Shop, Spot, WhatsApp and Contact are on the
+/// bottom navigation bar.
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
@@ -28,46 +27,16 @@ class MoreScreen extends StatelessWidget {
 
     final quickLinks = <_MoreItem>[
       _MoreItem(
-        icon: Icons.shopping_bag_outlined,
-        title: _t(context, "Buy Gold / Silver", "سونا / چاندی خریدیں"),
+        icon: Icons.calculate_outlined,
+        title: _t(context, "Buy Calculator", "خرید کیلکولیٹر"),
         subtitle: _t(
           context,
-          "Pick metal, karat and weight — see the buy price",
-          "دھات، کیرٹ اور وزن منتخب کریں — خرید قیمت دیکھیں",
+          "Pick metal, size and quantity — see the total",
+          "دھات، سائز اور مقدار منتخب کریں — کل رقم دیکھیں",
         ),
-        onTap: () {
-          final title = isUrdu ? "سونا / چاندی خریدیں" : "Buy Gold / Silver";
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => Scaffold(
-                backgroundColor: Brand.teal,
-                appBar: AppBar(title: Text(title)),
-                body: const BuyScreen(),
-              ),
-            ),
-          );
-        },
-      ),
-      _MoreItem(
-        icon: Icons.sell_outlined,
-        title: _t(context, "Sell Gold / Silver", "سونا / چاندی بیچیں"),
-        subtitle: _t(
+        onTap: () => Navigator.of(
           context,
-          "Pick metal, karat and weight — see the sell price",
-          "دھات، کیرٹ اور وزن منتخب کریں — فروخت قیمت دیکھیں",
-        ),
-        onTap: () {
-          final title = isUrdu ? "سونا / چاندی بیچیں" : "Sell Gold / Silver";
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => Scaffold(
-                backgroundColor: Brand.teal,
-                appBar: AppBar(title: Text(title)),
-                body: const SellScreen(),
-              ),
-            ),
-          );
-        },
+        ).push(MaterialPageRoute(builder: (_) => const BuyCalculatorScreen())),
       ),
       _MoreItem(
         icon: Icons.storefront_outlined,

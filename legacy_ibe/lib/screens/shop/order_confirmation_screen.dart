@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:intl/intl.dart";
 import "package:provider/provider.dart";
 import "package:url_launcher/url_launcher.dart";
@@ -24,6 +25,14 @@ class OrderConfirmationScreen extends StatelessWidget {
 
   Future<void> _callPhone(String number) async {
     await launchUrl(Uri.parse("tel:$number"));
+  }
+
+  Future<void> _copyOrderNumber(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: order.orderNumber));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Order ID copied")));
   }
 
   @override
@@ -55,6 +64,42 @@ class OrderConfirmationScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Order ID", style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          order.orderNumber,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontFamily: "monospace",
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: "Copy order ID",
+                        onPressed: () => _copyOrderNumber(context),
+                        icon: const Icon(Icons.copy_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Copy this order ID. You can use it on the Track Order page to verify the latest status anytime.",
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -152,13 +197,6 @@ class OrderConfirmationScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Keep your order number safe — you can share it with our "
-            "support team to check your order status anytime.",
-            style: theme.textTheme.bodySmall,
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           Card(

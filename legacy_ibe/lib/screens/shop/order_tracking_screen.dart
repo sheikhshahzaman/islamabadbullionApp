@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:intl/intl.dart";
 import "package:provider/provider.dart";
 
@@ -28,7 +29,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     super.initState();
     final initial = widget.initialOrderNumber;
     if (initial != null && initial.trim().isNotEmpty) {
-      _orderCtrl.text = initial.trim();
+      _orderCtrl.text = OrderNumberFormatter.format(initial);
       WidgetsBinding.instance.addPostFrameCallback((_) => _track());
     }
   }
@@ -40,7 +41,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _track() async {
-    final orderNumber = _orderCtrl.text.trim();
+    final orderNumber = OrderNumberFormatter.format(_orderCtrl.text);
+    if (_orderCtrl.text != orderNumber) {
+      _orderCtrl.value = TextEditingValue(
+        text: orderNumber,
+        selection: TextSelection.collapsed(offset: orderNumber.length),
+      );
+    }
+
     if (orderNumber.isEmpty) {
       setState(() => _error = "Please enter your order number.");
       return;
@@ -91,6 +99,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     const SizedBox(height: Brand.s8),
                     TextField(
                       controller: _orderCtrl,
+                      inputFormatters: [OrderNumberInputFormatter()],
+                      textCapitalization: TextCapitalization.characters,
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _track(),
                       decoration: const InputDecoration(
@@ -325,5 +335,36 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               : "upcoming",
         ),
     ];
+  }
+}
+
+class OrderNumberFormatter {
+  static String format(String value) {
+    final cleaned = value
+        .replaceAll(RegExp(r"[^A-Za-z0-9]"), "")
+        .toUpperCase()
+        .replaceFirst(RegExp(r"^ORD"), "");
+
+    if (cleaned.isEmpty) return "";
+
+    final body = cleaned.length > 18 ? cleaned.substring(0, 18) : cleaned;
+    final first = body.length > 8 ? body.substring(0, 8) : body;
+    final second = body.length > 8 ? body.substring(8) : "";
+
+    return second.isEmpty ? "ORD-$first" : "ORD-$first-$second";
+  }
+}
+
+class OrderNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final formatted = OrderNumberFormatter.format(newValue.text);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 }

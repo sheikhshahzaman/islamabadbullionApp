@@ -114,10 +114,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
       );
     }
 
-    if (shop.products.isEmpty) {
-      return _emptyState();
-    }
-
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -133,46 +129,51 @@ class _ProductsScreenState extends State<ProductsScreen> {
               ),
             ),
           ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            Brand.s12,
-            Brand.s4,
-            Brand.s12,
-            Brand.s24,
+        if (shop.products.isEmpty)
+          SliverFillRemaining(hasScrollBody: false, child: _emptyStateContent())
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              Brand.s12,
+              Brand.s4,
+              Brand.s12,
+              Brand.s24,
+            ),
+            sliver: SliverList.separated(
+              itemCount: shop.products.length,
+              separatorBuilder: (_, _) => const SizedBox(height: Brand.s12),
+              itemBuilder: (context, index) => _ProductCard(
+                product: shop.products[index],
+                money: _money,
+              ).entrance(delayMs: math.min(index, 8) * 50),
+            ),
           ),
-          sliver: SliverList.separated(
-            itemCount: shop.products.length,
-            separatorBuilder: (_, _) => const SizedBox(height: Brand.s12),
-            itemBuilder: (context, index) => _ProductCard(
-              product: shop.products[index],
-              money: _money,
-            ).entrance(delayMs: math.min(index, 8) * 50),
-          ),
-        ),
       ],
     );
   }
 
-  Widget _emptyState() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+  Widget _emptyStateContent() {
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Brand.s24),
-      children: [
-        const SizedBox(height: 140),
-        Icon(
-          Icons.diamond_outlined,
-          size: 56,
-          color: Brand.gold.withValues(alpha: 0.7),
-        ).entrance(),
-        const SizedBox(height: Brand.s16),
-        Center(
-          child: Text(
-            "No products available yet",
-            textAlign: TextAlign.center,
-            style: Brand.sans(15, color: Brand.textMuted),
-          ),
-        ).entrance(delayMs: 70),
-      ],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.diamond_outlined,
+            size: 56,
+            color: Brand.gold.withValues(alpha: 0.7),
+          ).entrance(),
+          const SizedBox(height: Brand.s16),
+          Center(
+            child: Text(
+              "No products available yet",
+              textAlign: TextAlign.center,
+              style: Brand.sans(15, color: Brand.textMuted),
+            ),
+          ).entrance(delayMs: 70),
+          const SizedBox(height: 120),
+        ],
+      ),
     );
   }
 

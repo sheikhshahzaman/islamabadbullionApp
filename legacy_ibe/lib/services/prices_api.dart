@@ -32,6 +32,8 @@ class PricesApi {
     final gold = m(json["gold"]);
     final silver = m(json["silver"]);
     final currencies = m(json["currencies"]);
+    final catalog = m(json["price_catalog"]);
+    final catalogSilverUnits = m(m(catalog["silver"])["units"]);
 
     // PKR -> selected currency divisor (1.0 for PKR itself).
     double rate = 1.0;
@@ -55,15 +57,24 @@ class PricesApi {
       "18K": goldAt("18k", "gram", side),
     };
 
-    Map<String, dynamic> silverByQty(String side) => {
-      "10 Tola (QR Packaging)": silverAt("10_tola_qr", side) > 0
-          ? silverAt("10_tola_qr", side)
-          : silverAt("10_tola", side),
-      "Tola": silverAt("tola", side),
-      "10 Tola": silverAt("10_tola", side),
-      "5 Tola": silverAt("5_tola", side),
-      "1 KG": silverAt("kg", side),
-    };
+    Map<String, dynamic> silverByQty(String side) {
+      final out = <String, dynamic>{
+        "10 Tola (QR Packaging)": silverAt("10_tola_qr", side) > 0
+            ? silverAt("10_tola_qr", side)
+            : silverAt("10_tola", side),
+        "Tola": silverAt("tola", side),
+        "10 Tola": silverAt("10_tola", side),
+        "5 Tola": silverAt("5_tola", side),
+        "1 KG": silverAt("kg", side),
+      };
+
+      catalogSilverUnits.forEach((unit, label) {
+        final value = silverAt(unit.toString(), side);
+        if (value > 0) out[label.toString()] = value;
+      });
+
+      return out;
+    }
 
     Map<String, dynamic> block(double perGram, double perTola) => {
       "per_oz": perGram * _gramsPerOz,
@@ -146,6 +157,7 @@ class PricesApi {
       "timestamp": (updated ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000,
       "currency": currency,
       "metals": metals,
+      "price_catalog": catalog,
       "spot_gold_bid": spotGoldBid,
       "spot_gold_ask": spot(qGold["ask"]) ?? spotGoldBid,
       "spot_silver_bid": spotSilverBid,
