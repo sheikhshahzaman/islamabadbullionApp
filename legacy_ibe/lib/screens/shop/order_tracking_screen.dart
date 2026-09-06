@@ -104,7 +104,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _track(),
                       decoration: const InputDecoration(
-                        hintText: "XXXXXXXX-0000000000",
+                        hintText: "IBE-12345-12345678",
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -338,19 +338,55 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 }
 
+/// Order numbers look like `IBE-YYDDD-NNNNNNNN`, for example
+/// `IBE-26249-40571836`.
+///
+/// `IBE-` is added automatically and the value is always upper case, so the
+/// customer only types the 13 digits and can paste any casing or spacing.
 class OrderNumberFormatter {
+  static const String prefix = "IBE";
+  static const String legacyPrefix = "ORD";
+
+  /// 5 date digits + 8 serial digits.
+  static const int _dateDigits = 5;
+  static const int _serialDigits = 8;
+  static const int _totalDigits = _dateDigits + _serialDigits;
+
   static String format(String value) {
-    final cleaned = value
-        .replaceAll(RegExp(r"[^A-Za-z0-9]"), "")
-        .toUpperCase();
+    var cleaned =
+        value.replaceAll(RegExp(r"[^A-Za-z0-9]"), "").toUpperCase();
 
     if (cleaned.isEmpty) return "";
 
-    final body = cleaned.length > 18 ? cleaned.substring(0, 18) : cleaned;
-    final first = body.length > 8 ? body.substring(0, 8) : body;
-    final second = body.length > 8 ? body.substring(8) : "";
+    // Orders placed before this format keep working.
+    if (cleaned.startsWith(legacyPrefix)) {
+      final body = cleaned.substring(legacyPrefix.length);
+      final first = body.length > 8 ? body.substring(0, 8) : body;
+      final rest = body.length > 8
+          ? body.substring(8, body.length > 18 ? 18 : body.length)
+          : "";
+      return rest.isEmpty
+          ? "$legacyPrefix-$first"
+          : "$legacyPrefix-$first-$rest";
+    }
 
-    return second.isEmpty ? first : "$first-$second";
+    if (cleaned.startsWith(prefix)) {
+      cleaned = cleaned.substring(prefix.length);
+    }
+
+    var digits = cleaned.replaceAll(RegExp(r"\D"), "");
+    if (digits.isEmpty) return "";
+    if (digits.length > _totalDigits) {
+      digits = digits.substring(0, _totalDigits);
+    }
+
+    final date = digits.length > _dateDigits
+        ? digits.substring(0, _dateDigits)
+        : digits;
+    final serial =
+        digits.length > _dateDigits ? digits.substring(_dateDigits) : "";
+
+    return serial.isEmpty ? "$prefix-$date" : "$prefix-$date-$serial";
   }
 }
 

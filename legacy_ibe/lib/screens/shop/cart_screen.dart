@@ -7,6 +7,7 @@ import "package:provider/provider.dart";
 import "../../providers/cart_provider.dart";
 import "../../providers/shop_provider.dart";
 import "checkout_screen.dart";
+import "../../widgets/product_thumb.dart";
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -24,7 +25,9 @@ class _CartScreenState extends State<CartScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCartPrices();
       _refreshTimer = Timer.periodic(
-        const Duration(seconds: 5),
+        // Rates only change about once a minute on the backend, so polling
+        // every 5s just burned rate-limit allowance and battery.
+        const Duration(seconds: 20),
         (_) => _refreshCartPrices(),
       );
     });
@@ -99,16 +102,10 @@ class _CartScreenState extends State<CartScreen> {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: theme.dividerColor),
                             ),
-                            child: line.product.imageUrl != null
-                                ? Image.network(
-                                    line.product.imageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) =>
-                                        _cartImagePlaceholder(
-                                          line.product.metal,
-                                        ),
-                                  )
-                                : _cartImagePlaceholder(line.product.metal),
+                            child: ProductThumb(
+                              product: line.product,
+                              size: 56,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -226,13 +223,4 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _cartImagePlaceholder(String metal) => Container(
-    color: metal == "silver"
-        ? const Color(0xFFD9D9D9)
-        : const Color(0xFFF0CBA3),
-    child: Icon(
-      metal == "silver" ? Icons.circle_outlined : Icons.toll,
-      color: metal == "silver" ? Colors.black45 : Colors.black54,
-    ),
-  );
 }

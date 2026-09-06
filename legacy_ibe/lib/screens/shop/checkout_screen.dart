@@ -7,6 +7,7 @@ import "package:provider/provider.dart";
 
 import "../../models/shop_models.dart";
 import "../../providers/shop_provider.dart";
+import "../../services/api_client.dart";
 import "../../providers/site_config_provider.dart";
 import "../../theme/brand.dart";
 import "../../widgets/brand_kit.dart";
@@ -57,13 +58,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _deliveryMethod = "pickup";
   XFile? _proof;
 
-  static const _methods = <String, String>{"bank_transfer": "Bank Transfer"};
+  /// Cash is offered when the customer collects, COD when we deliver. Only a
+  /// bank transfer needs a payment screenshot.
+  static const _methodLabels = <String, String>{
+    "bank_transfer": "Bank Transfer",
+    "cash": "Cash at Shop",
+    "cod": "Cash on Delivery",
+  };
+
+  static const _methodBlurbs = <String, String>{
+    "bank_transfer": "Transfer now, then upload the screenshot",
+    "cash": "Pay in cash when you collect your order",
+    "cod": "Pay in cash when your order is delivered",
+  };
+
+  List<String> get _availableMethods => _deliveryMethod == "delivery"
+      ? const ["bank_transfer", "cod"]
+      : const ["bank_transfer", "cash"];
+
+  bool get _needsProof => _method == "bank_transfer";
 
   @override
   void initState() {
     super.initState();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      // Rates only change about once a minute on the backend, so polling
+      // every 5s just burned rate-limit allowance and battery.
+      const Duration(seconds: 20),
       (_) => _refreshCreatedOrder(),
     );
   }
@@ -96,6 +117,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _step = 1;
       });
       await _refreshCreatedOrder();
+    } on RateLimitedException catch (e) {
+      setState(() => _error = e.toString());
     } catch (e) {
       setState(
         () => _error =
@@ -141,7 +164,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _submitPayment() async {
     final created = _created;
     final proof = _proof;
-    if (created == null || proof == null || _method.isEmpty) return;
+    // Only a bank transfer needs the screenshot before we can submit.
+    if (created == null || _method.isEmpty) return;
+    if (_needsProof && proof == null) return;
 
     final api = context.read<ShopProvider>().api;
     await _refreshCreatedOrder();
@@ -155,7 +180,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final order = await api.submitPayment(
         orderNumber: created.order.orderNumber,
         method: _method,
-        proofImagePath: proof.path,
+        proofImagePath: _needsProof ? proof?.path : null,
         deliveryMethod: _deliveryMethod,
         deliveryAddress: _deliveryMethod == "delivery"
             ? _addressCtrl.text
@@ -170,6 +195,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         (route) => route.isFirst,
       );
+    } on RateLimitedException catch (e) {
+      setState(() => _error = e.toString());
     } catch (e) {
       setState(
         () => _error = e
@@ -216,7 +243,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _progressHeader() {
-    const labels = ["Details", "Payment", "Proof"];
+    // Cash and COD finish at the payment step, so there is no Proof stage to
+    // show. Only a bank transfer has three.
+    final labels = _needsProof
+        ? const ["Details", "Payment", "Proof"]
+        : const ["Details", "Payment"];
 
     return BrandCard(
       padding: const EdgeInsets.all(Brand.s12),
@@ -404,7 +435,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 title: "Pickup from our shop",
                 subtitle: "Free",
                 icon: Icons.storefront_outlined,
-                onTap: () => setState(() => _deliveryMethod = "pickup"),
+                onTap: () => setState(() {
+                  _deliveryMethod = "pickup";
+                  if (!_availableMethods.contains(_method)) {
+                    _method = "bank_transfer";
+                  }
+                }),
               ),
               const SizedBox(height: 10),
               _choiceTile(
@@ -414,7 +450,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ? "Rs ${_money.format(deliveryCharge)}"
                     : "Free Delivery",
                 icon: Icons.delivery_dining_outlined,
-                onTap: () => setState(() => _deliveryMethod = "delivery"),
+                onTap: () => setState(() {
+                  _deliveryMethod = "delivery";
+                  if (!_availableMethods.contains(_method)) {
+                    _method = "bank_transfer";
+                  }
+                }),
               ),
               if (_deliveryMethod == "delivery") ...[
                 const SizedBox(height: Brand.s16),
@@ -441,18 +482,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             children: [
               _sectionTitle("Payment method", Icons.account_balance_outlined),
               const SizedBox(height: Brand.s12),
-              for (final entry in _methods.entries)
+              for (final method in _availableMethods)
                 _choiceTile(
-                  selected: _method == entry.key,
-                  title: entry.value,
-                  subtitle: "Manual bank transfer with proof upload",
-                  icon: Icons.account_balance_wallet_outlined,
-                  onTap: () => setState(() => _method = entry.key),
+                  selected: _method == method,
+                  title: _methodLabels[method] ?? method,
+                  subtitle: _methodBlurbs[method] ?? "",
+                  icon: method == "bank_transfer"
+                      ? Icons.account_balance_wallet_outlined
+                      : Icons.payments_outlined,
+                  onTap: () => setState(() => _method = method),
                 ),
             ],
           ),
         ),
-        if (_method.isNotEmpty) ...[
+        if (_method.isNotEmpty && _needsProof) ...[
           const SizedBox(height: Brand.s12),
           _accountDetails(created, deliveryCharge),
         ],
@@ -469,9 +512,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(width: Brand.s12),
             Expanded(
               child: _primaryButton(
-                label: "Continue",
-                icon: Icons.arrow_forward_rounded,
-                onPressed: canContinue ? () => setState(() => _step = 2) : null,
+                label: _needsProof ? "Continue" : "Place order",
+                icon: _needsProof
+                    ? Icons.arrow_forward_rounded
+                    : Icons.check_rounded,
+                onPressed: !canContinue || _busy
+                    ? null
+                    : () {
+                        if (_needsProof) {
+                          setState(() => _step = 2);
+                        } else {
+                          _submitPayment();
+                        }
+                      },
               ),
             ),
           ],

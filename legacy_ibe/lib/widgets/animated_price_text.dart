@@ -7,12 +7,76 @@ import "package:intl/intl.dart";
 
 import "../providers/animated_price_control_provider.dart";
 
+/// Which digits are allowed to move for the cosmetic ticking effect.
+enum PriceFluctuation {
+  /// Nothing moves. The exact value is shown.
+  none,
+
+  /// Only the digits after the decimal point move. Used for international
+  /// spot, where the dollar figure stays locked.
+  decimals,
+
+  /// Only the two digits BEFORE the decimal point move. Everything above them
+  /// stays exactly as the admin set it, so Rs 456,999 ticks within
+  /// Rs 456,900-456,999 and never misreads at a glance.
+  ///
+  /// Applied to the admin-managed gold and silver rate board.
+  lastTwoDigits,
+}
+
+
+/// Value below which moving the last two digits would distort the number too
+/// much (they would be a large share of it), so those tick the decimals instead.
+const double kLastTwoDigitsFloor = 1000;
+
+/// Resolves the mode actually used for [value].
+PriceFluctuation effectivePriceFluctuation(
+  double value,
+  PriceFluctuation requested,
+) {
+  if (requested != PriceFluctuation.lastTwoDigits) return requested;
+
+  return value.abs() >= kLastTwoDigitsFloor
+      ? PriceFluctuation.lastTwoDigits
+      : PriceFluctuation.decimals;
+}
+
+/// Applies the cosmetic tick, returning the number to draw.
+///
+/// Everything above the moving digits is taken straight from the real value, so
+/// the price never misreads at a glance and the admin figure stays the anchor.
+/// This is display only: real prices are never touched by it.
+double applyPriceFluctuation({
+  required double value,
+  required PriceFluctuation mode,
+  required int lastTwo,
+}) {
+  final resolved = effectivePriceFluctuation(value, mode);
+  if (resolved == PriceFluctuation.none) return value;
+
+  final negative = value.isNegative;
+  final abs = value.abs();
+
+  final shown = switch (resolved) {
+    // Lock the integer part, move the decimals.
+    PriceFluctuation.decimals => abs.floorToDouble() + lastTwo / 100.0,
+
+    // Lock everything above the last two digits, move those.
+    PriceFluctuation.lastTwoDigits => (abs / 100).floorToDouble() * 100 +
+        lastTwo +
+        (abs - abs.floorToDouble()),
+
+    PriceFluctuation.none => abs,
+  };
+
+  return negative ? -shown : shown;
+}
+
 /// AnimatedPriceText
 /// - Smoothly animates value changes
 /// - Keeps numbers LTR even in Urdu/RTL UI
-/// - Randomly changes only the last 2 decimals on interval
-/// - Green flash when last-2-decimals go up
-/// - Red flash when last-2-decimals go down
+/// - Ticks a limited set of digits on an interval (see [PriceFluctuation])
+/// - Green flash when the ticking digits go up, red when they go down
 /// - Admin can remotely turn animation ON/OFF without touching call-sites
 class AnimatedPriceText extends StatefulWidget {
   final double value;
@@ -25,7 +89,9 @@ class AnimatedPriceText extends StatefulWidget {
   final bool pulseDecimals;
   final Duration decimalPulse;
 
-  final bool fluctuateLastTwoDecimals;
+  /// Which digits tick. Defaults to [PriceFluctuation.decimals] so existing
+  /// call sites keep their old behaviour.
+  final PriceFluctuation fluctuation;
   final Duration fluctuateInterval;
 
   final bool flashOnFluctuation;
@@ -50,7 +116,7 @@ class AnimatedPriceText extends StatefulWidget {
     this.decimals = 2,
     this.pulseDecimals = true,
     this.decimalPulse = const Duration(milliseconds: 1200),
-    this.fluctuateLastTwoDecimals = true,
+    this.fluctuation = PriceFluctuation.decimals,
     this.fluctuateInterval = const Duration(seconds: 2),
     this.flashOnFluctuation = true,
     this.flashHold = const Duration(milliseconds: 900),
@@ -86,15 +152,22 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
 
   bool _remoteEnabled = true;
 
-  /// Freeze only the animated decimal effect when remote animation is turned off.
-  String? _frozenDecPart;
+  /// Frozen display value while the admin has animation switched off.
+  double? _frozenValue;
 
   bool get _effectiveEnabled => widget.enabled && _remoteEnabled;
   bool get _canPulse => _effectiveEnabled && widget.pulseDecimals;
-  bool get _canFluctuate =>
-      _effectiveEnabled &&
-          widget.fluctuateLastTwoDecimals &&
-          widget.decimals >= 2;
+  PriceFluctuation get _mode =>
+      effectivePriceFluctuation(widget.value, widget.fluctuation);
+
+  bool get _canFluctuate {
+    if (!_effectiveEnabled) return false;
+    return switch (_mode) {
+      PriceFluctuation.none => false,
+      PriceFluctuation.decimals => widget.decimals >= 2,
+      PriceFluctuation.lastTwoDigits => true,
+    };
+  }
 
   @override
   void initState() {
@@ -144,7 +217,7 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
       // When animation is OFF, show new real value instantly, but keep the
       // frozen display-only decimals until animation is turned back on.
       if (newEffectiveEnabled) {
-        _frozenDecPart = null;
+        _frozenValue = null;
       }
     }
 
@@ -175,7 +248,7 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
     }
 
     final tickSettingsChanged =
-        oldWidget.fluctuateLastTwoDecimals != widget.fluctuateLastTwoDecimals ||
+        oldWidget.fluctuation != widget.fluctuation ||
             oldWidget.fluctuateInterval != widget.fluctuateInterval;
 
     if (tickSettingsChanged) {
@@ -215,15 +288,12 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
       _flashResetTimer = null;
       _flashBg = null;
 
-      // Freeze the currently displayed decimal effect.
-      _frozenDecPart = _displayDecimalsFor(
-        widget.value,
-        fluctuate: widget.fluctuateLastTwoDecimals && widget.decimals >= 2,
-      );
+      // Freeze whatever is on screen right now.
+      _frozenValue = _fluctuated(widget.value);
 
       _pulse.stop();
     } else if (!oldEnabled && newEnabled) {
-      _frozenDecPart = null;
+      _frozenValue = null;
       _lastTwo = _initialLastTwo(widget.value);
 
       if (widget.pulseDecimals) {
@@ -279,10 +349,15 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
     });
   }
 
+  /// Seeds the ticking digits from the real value so the first paint shows the
+  /// admin figure exactly, before it starts moving.
   int _initialLastTwo(double v) {
     final abs = v.abs();
-    final scaled = (abs * 100.0).round();
-    return scaled % 100;
+
+    return switch (_mode) {
+      PriceFluctuation.lastTwoDigits => abs.floor() % 100,
+      _ => (abs * 100.0).round() % 100,
+    };
   }
 
   String _format(double v) {
@@ -290,31 +365,14 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
     return fmt.format(v);
   }
 
-  String _rawDecimalsFor(double v) {
-    final str = _format(v);
-    final parts = str.split(".");
-    return (parts.length > 1 ? parts[1] : "")
-        .padRight(widget.decimals, "0")
-        .substring(0, widget.decimals);
-  }
+  double _fluctuated(double v) {
+    if (!_canFluctuate) return v;
 
-  String _applyLastTwoFluctuation(String decPart) {
-    if (widget.decimals < 2) return decPart;
-
-    final fixed =
-    decPart.padRight(widget.decimals, "0").substring(0, widget.decimals);
-    final lastTwo = _lastTwo.toString().padLeft(2, "0");
-
-    if (widget.decimals == 2) return lastTwo;
-
-    final lead = fixed.substring(0, widget.decimals - 2);
-    return "$lead$lastTwo";
-  }
-
-  String _displayDecimalsFor(double v, {required bool fluctuate}) {
-    final rawDec = _rawDecimalsFor(v);
-    if (!fluctuate) return rawDec;
-    return _applyLastTwoFluctuation(rawDec);
+    return applyPriceFluctuation(
+      value: v,
+      mode: widget.fluctuation,
+      lastTwo: _lastTwo,
+    );
   }
 
   TextStyle _withFallbackWhite(TextStyle s) =>
@@ -326,15 +384,12 @@ class _AnimatedPriceTextState extends State<AnimatedPriceText>
     final curStyle = base.copyWith(fontWeight: FontWeight.w600);
     final numStyle = base.copyWith(fontWeight: FontWeight.w800);
 
-    final str = _format(v);
+    final shown = _frozenValue ?? _fluctuated(v);
+
+    final str = _format(shown);
     final parts = str.split(".");
     final intPart = parts.isNotEmpty ? parts[0] : str;
-
-    final decPart = _frozenDecPart ??
-        _displayDecimalsFor(
-          v,
-          fluctuate: _canFluctuate,
-        );
+    final decPart = parts.length > 1 ? parts[1] : "";
 
     Widget decimalsWidget = Text(decPart, style: numStyle);
 

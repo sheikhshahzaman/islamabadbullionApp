@@ -174,6 +174,8 @@ class _MetalDetailScreenState extends State<MetalDetailScreen> {
           AnimatedPriceText(
             value: value,
             currencyPrefix: sym,
+            // Admin-set rates: only the two digits before the point move.
+            fluctuation: PriceFluctuation.lastTwoDigits,
             style: Theme.of(context).textTheme.titleLarge,
             decimals: 2,
           ),
@@ -234,6 +236,8 @@ class _MetalDetailScreenState extends State<MetalDetailScreen> {
           AnimatedPriceText(
             value: value,
             currencyPrefix: sym,
+            // Admin-set rates: only the two digits before the point move.
+            fluctuation: PriceFluctuation.lastTwoDigits,
             style: Theme.of(context).textTheme.titleMedium,
             decimals: 2,
           ),

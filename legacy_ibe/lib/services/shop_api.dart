@@ -103,10 +103,12 @@ class ShopApi {
   }
 
   /// Uploads the payment proof screenshot (multipart).
+  /// Submits the order. [proofImagePath] is only sent for a bank transfer;
+  /// cash and COD complete without a screenshot.
   Future<ShopOrder> submitPayment({
     required String orderNumber,
     required String method,
-    required String proofImagePath,
+    String? proofImagePath,
     required String deliveryMethod,
     String? deliveryAddress,
     String? referenceNumber,
@@ -124,13 +126,24 @@ class ShopApi {
     if (referenceNumber != null && referenceNumber.trim().isNotEmpty) {
       request.fields["reference_number"] = referenceNumber.trim();
     }
-    request.files.add(
-      await http.MultipartFile.fromPath("proof_image", proofImagePath),
-    );
+    if (proofImagePath != null && proofImagePath.isNotEmpty) {
+      request.files.add(
+        await http.MultipartFile.fromPath("proof_image", proofImagePath),
+      );
+    }
 
     final streamed =
         await request.send().timeout(const Duration(seconds: 60));
     final body = utf8.decode(await streamed.stream.toBytes());
+
+    // Multipart bypasses ApiClient, so 429 has to be mapped here too or the
+    // user sees Laravel's raw "Too Many Attempts." text.
+    if (streamed.statusCode == 429) {
+      throw RateLimitedException(
+        retryAfterSeconds:
+            int.tryParse(streamed.headers["retry-after"] ?? ""),
+      );
+    }
 
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
       String message = "Upload failed (HTTP ${streamed.statusCode})";

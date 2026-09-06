@@ -16,12 +16,27 @@ class PricesApi {
   static const double _gramsPerTola = 11.6638038;
 
   Future<MetalPricesResponse> fetchLatest({required String currency}) async {
+    final json = await fetchRaw();
+    return adapt(json, currency);
+  }
+
+  /// Fetches the raw `/api/prices` payload once.
+  ///
+  /// The endpoint takes no currency parameter: every currency is derived
+  /// client-side from the exchange rates inside this same payload. Callers
+  /// therefore fetch once and [adapt] as many times as they need, instead of
+  /// issuing an identical second request for the USD snapshot.
+  Future<Map<String, dynamic>> fetchRaw() {
     final uri = Uri.parse(
       "${AppConfig.apiBase}/prices?t=${DateTime.now().millisecondsSinceEpoch}",
     );
-    final json = await _client.getJson(uri);
-    return _adapt(json, currency.toUpperCase());
+    return _client.getJson(uri);
   }
+
+  /// Converts a raw `/api/prices` payload into the app model for [currency].
+  /// Also used to rebuild prices from the on-device cache while offline.
+  MetalPricesResponse adapt(Map<String, dynamic> json, String currency) =>
+      _adapt(json, currency.toUpperCase());
 
   MetalPricesResponse _adapt(Map<String, dynamic> json, String currency) {
     double d(dynamic v) => (v is num) ? v.toDouble() : 0.0;

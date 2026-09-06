@@ -9,6 +9,7 @@ import "../../models/shop_models.dart";
 import "../../providers/cart_provider.dart";
 import "../../providers/shop_provider.dart";
 import "../../theme/brand.dart";
+import "../../widgets/product_thumb.dart";
 import "../../widgets/brand_kit.dart";
 import "cart_screen.dart";
 
@@ -29,7 +30,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCatalog(silent: false);
       _refreshTimer = Timer.periodic(
-        const Duration(seconds: 5),
+        // Rates only change about once a minute on the backend, so polling
+        // every 5s just burned rate-limit allowance and battery.
+        const Duration(seconds: 20),
         (_) => _refreshCatalog(),
       );
     });
@@ -336,13 +339,7 @@ class _ProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(Brand.rSm),
                 border: Border.all(color: Brand.hairlineSoft),
               ),
-              child: product.imageUrl != null
-                  ? Image.network(
-                      product.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _placeholder(),
-                    )
-                  : _placeholder(),
+              child: ProductThumb(product: product, size: 68),
             ),
           ),
           const SizedBox(width: Brand.s12),
@@ -436,13 +433,6 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() => Container(
-    decoration: BoxDecoration(gradient: Brand.cardGradient),
-    child: Icon(
-      product.metal == "silver" ? Icons.circle_outlined : Icons.toll,
-      color: Brand.gold.withValues(alpha: 0.6),
-    ),
-  );
 }
 
 /// Shimmer skeleton mirroring the [_ProductCard] layout for the loading state.

@@ -21,7 +21,7 @@ import "contact_us_screen.dart";
 import "shop/products_screen.dart";
 import "../providers/site_config_provider.dart";
 import "dart:async";
-import "package:internet_connection_checker_plus/internet_connection_checker_plus.dart";
+import "../services/connectivity_service.dart";
 
 enum _GoldQty { gram1, gram5, gram10, tola1, tola10 }
 
@@ -42,161 +42,117 @@ class _HomeScreenState extends State<HomeScreen> {
 
   _GoldQty _goldQty = _GoldQty.tola1;
 
-  StreamSubscription<InternetStatus>? _internetSubscription;
-  bool _isOfflineDialogOpen = false;
   bool _hasInternet = true;
   bool _internetChecked = false;
+  bool _bannerDismissed = false;
 
   @override
   void initState() {
     super.initState();
-    _checkInitialInternet();
-    _listenToInternetChanges();
+    ConnectivityService.instance.start();
+    ConnectivityService.instance.online.addListener(_onConnectivityChanged);
+    _hasInternet = ConnectivityService.instance.isOnline;
+    _internetChecked = true;
   }
 
   @override
   void dispose() {
-    _internetSubscription?.cancel();
+    ConnectivityService.instance.online.removeListener(_onConnectivityChanged);
     super.dispose();
   }
 
-  Future<void> _checkInitialInternet() async {
-    final hasInternet = await InternetConnection().hasInternetAccess;
+  void _onConnectivityChanged() {
     if (!mounted) return;
 
+    final online = ConnectivityService.instance.isOnline;
+    final wasOnline = _hasInternet;
+
     setState(() {
-      _hasInternet = hasInternet;
+      _hasInternet = online;
       _internetChecked = true;
+      if (!online) _bannerDismissed = false;
     });
 
-    if (!hasInternet) {
-      _showNoInternetDialog();
+    if (online && !wasOnline) {
+      context.read<PricesProvider>().refresh();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.read<AppSettings>().isUrdu
+                ? "انٹرنیٹ کنکشن بحال ہو گیا ہے"
+                : "Internet connection restored",
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
-  void _listenToInternetChanges() {
-    _internetSubscription =
-        InternetConnection().onStatusChange.listen((InternetStatus status) {
-          if (!mounted) return;
-
-          final connected = status == InternetStatus.connected;
-          final wasConnected = _hasInternet;
-
-          setState(() {
-            _hasInternet = connected;
-            _internetChecked = true;
-          });
-
-          if (!connected) {
-            _showNoInternetDialog();
-            return;
-          }
-
-          _hideNoInternetDialog();
-
-          // Show "restored" only when internet was previously OFF
-          if (!wasConnected) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  context.read<AppSettings>().isUrdu
-                      ? "انٹرنیٹ کنکشن بحال ہو گیا ہے"
-                      : "Internet connection restored",
-                ),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-
-            context.read<PricesProvider>().refresh();
-          }
-        });
-  }
-
-  void _showNoInternetDialog() {
-    if (_isOfflineDialogOpen || !mounted) return;
-
-    setState(() => _isOfflineDialogOpen = true);
-
-    final isUrdu = context.read<AppSettings>().isUrdu;
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: AlertDialog(
-            backgroundColor: _card,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(color: _accent.withOpacity(0.35)),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.wifi_off_rounded, color: _accent, size: 28),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    isUrdu ? "انٹرنیٹ دستیاب نہیں" : "No Internet Connection",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
+  /// A slim, dismissible bar shown at the top while we are offline.
+  ///
+  /// Deliberately not a modal dialog: cached rates stay readable and the user
+  /// can keep browsing Shop, Contact and the rest of the app.
+  Widget _offlineBanner(bool isUrdu) {
+    return Material(
+      color: const Color(0xFF7A3B10),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+          child: Row(
+            children: [
+              const Icon(Icons.wifi_off_rounded,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isUrdu
+                      ? "انٹرنیٹ سست یا بند ہے۔ محفوظ شدہ ریٹ دکھائے جا رہے ہیں۔"
+                      : "You are offline. Showing the last saved rates.",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-            content: Text(
-              isUrdu
-                  ? "براہِ کرم اپنا انٹرنیٹ کنکشن چیک کریں۔ کنکشن بحال ہوتے ہی ایپ دوبارہ صحیح کام کرے گی۔"
-                  : "Please check your internet connection. The app will continue normally as soon as the connection is restored.",
-              style: const TextStyle(
-                color: Colors.white70,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
               ),
-            ),
-            actions: [
-              TextButton.icon(
+              TextButton(
                 onPressed: () async {
-                  final hasInternet =
-                  await InternetConnection().hasInternetAccess;
+                  final ok =
+                      await ConnectivityService.instance.checkNow();
                   if (!mounted) return;
-
-                  if (hasInternet) {
-                    _hideNoInternetDialog();
+                  if (ok) {
                     context.read<PricesProvider>().refresh();
                   }
                 },
-                icon: Icon(Icons.refresh_rounded, color: _accent),
-                label: Text(
-                  isUrdu ? "دوبارہ چیک کریں" : "Try Again",
-                  style: TextStyle(
-                    color: _accent,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+                child: Text(
+                  isUrdu ? "دوبارہ کوشش" : "Retry",
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
+                    fontSize: 12.5,
                   ),
                 ),
               ),
+              IconButton(
+                onPressed: () => setState(() => _bannerDismissed = true),
+                icon: const Icon(Icons.close_rounded,
+                    color: Colors.white70, size: 18),
+                visualDensity: VisualDensity.compact,
+                tooltip: isUrdu ? "بند کریں" : "Dismiss",
+              ),
             ],
           ),
-        );
-      },
-    ).then((_) {
-      if (!mounted) return;
-      setState(() => _isOfflineDialogOpen = false);
-    });
-  }
-
-  void _hideNoInternetDialog() {
-    if (!_isOfflineDialogOpen || !mounted) return;
-
-    Navigator.of(context, rootNavigator: true).pop();
-
-    if (mounted) {
-      setState(() => _isOfflineDialogOpen = false);
-    }
+        ),
+      ),
+    );
   }
 
   MetalPrice? _findMetal(List<MetalPrice> list, String code) {
@@ -393,12 +349,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: _isOfflineDialogOpen
-            ? Container(
-          color: _bg,
-        )
-            : AnimatedSwitcher(
+      body: Column(
+        children: [
+          if (!_hasInternet && !_bannerDismissed)
+            _offlineBanner(settings.isUrdu),
+          Expanded(
+            child: SafeArea(
+              top: !_hasInternet && !_bannerDismissed ? false : true,
+              child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           child: isSpot
               ? _SpotBody(
@@ -426,7 +384,10 @@ class _HomeScreenState extends State<HomeScreen> {
             background: _bg,
             cardColor: _card,
           ),
-        ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -775,14 +736,16 @@ class _SpotBody extends StatelessWidget {
       );
     }
 
+    // Only take over the whole screen when there is genuinely nothing to show.
+    // With cached rates available the offline banner handles it instead.
     if (!hasInternet && prices.latest == null) {
       return Container(
         color: _bg,
         child: ErrorView(
           isOffline: true,
           onRetry: () async {
-            final hasInternet = await InternetConnection().hasInternetAccess;
-            if (hasInternet) {
+            final online = await ConnectivityService.instance.checkNow();
+            if (online) {
               prices.refresh();
             }
           },
@@ -1480,6 +1443,8 @@ class _BuySellRow extends StatelessWidget {
             value: v,
             currencyPrefix: sym,
             decimals: 2,
+            // Admin-set rates: only the two digits before the point move.
+            fluctuation: PriceFluctuation.lastTwoDigits,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,

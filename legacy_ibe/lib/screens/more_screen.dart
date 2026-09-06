@@ -4,7 +4,7 @@ import "package:provider/provider.dart";
 import "../providers/app_settings.dart";
 import "../theme/brand.dart";
 import "../widgets/brand_kit.dart";
-import "buy_calculator_screen.dart";
+import "request_to_buy_screen.dart";
 import "legal_page_screen.dart";
 import "zakat_screen.dart";
 import "shop/products_screen.dart";
@@ -27,16 +27,20 @@ class MoreScreen extends StatelessWidget {
 
     final quickLinks = <_MoreItem>[
       _MoreItem(
-        icon: Icons.calculate_outlined,
-        title: _t(context, "Buy Calculator", "خرید کیلکولیٹر"),
+        icon: Icons.request_quote_outlined,
+        title: _t(
+          context,
+          "Request to Buy Gold/Silver",
+          "سونا/چاندی خریدنے کی درخواست",
+        ),
         subtitle: _t(
           context,
-          "Pick metal, size and quantity — see the total",
-          "دھات، سائز اور مقدار منتخب کریں — کل رقم دیکھیں",
+          "Get a price and we will contact you",
+          "قیمت معلوم کریں، ہم آپ سے رابطہ کریں گے",
         ),
         onTap: () => Navigator.of(
           context,
-        ).push(MaterialPageRoute(builder: (_) => const BuyCalculatorScreen())),
+        ).push(MaterialPageRoute(builder: (_) => const RequestToBuyScreen())),
       ),
       _MoreItem(
         icon: Icons.storefront_outlined,

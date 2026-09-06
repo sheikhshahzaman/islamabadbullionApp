@@ -318,6 +318,8 @@ class OrderConfirmationScreen extends StatelessWidget {
     "jazzcash" => "JazzCash",
     "raast" => "Raast",
     "bank_transfer" => "Bank Transfer",
+    "cash" => "Cash at Shop",
+    "cod" => "Cash on Delivery",
     _ => method,
   };
 }

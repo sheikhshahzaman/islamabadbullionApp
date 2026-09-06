@@ -37,6 +37,7 @@ class ShopProduct {
   final String metal; // gold | silver
   final String karat;
   final String? imageUrl;
+  final String? thumbUrl; // small version for list tiles
   final ShopCategory? category;
   final double? currentPrice; // null = price unavailable right now
   final String? discountLabel;
@@ -51,6 +52,7 @@ class ShopProduct {
     required this.metal,
     required this.karat,
     required this.imageUrl,
+    this.thumbUrl,
     required this.category,
     required this.currentPrice,
     required this.discountLabel,
@@ -68,6 +70,7 @@ class ShopProduct {
       metal: _s(json["metal"]),
       karat: _s(json["karat"]),
       imageUrl: json["image"] == null ? null : _s(json["image"]),
+      thumbUrl: json["image_thumb"] == null ? null : _s(json["image_thumb"]),
       category: cat.isEmpty ? null : ShopCategory.fromJson(cat),
       currentPrice: json["current_price"] == null
           ? null
