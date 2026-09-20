@@ -2,16 +2,24 @@
 .DS_Store
 **/.DS_Store
 
-# Duplicate archives of the same code (already extracted)
-/_legacy.zip
-/legacy_ibe.zip
-
 # SECRETS — never commit these
 **/key.properties
 **/*.jks
 **/*.keystore
-_legacy/metal/includes/db.php
+**/.env
 
 # Machine-specific / regenerated
 **/local.properties
 **/ios/Pods/
+
+# Not part of the app. These live beside the app on the maintainer's machine:
+# the Laravel backend is its own repository, and the rest are local archives
+# and build output. Keeping them ignored stops an accidental `git add -A`
+# from committing gigabytes.
+/gold-website/
+/website-release/
+/website-migration-*/
+/store-release/
+/cloudflare/
+/Archive/
+*.zip
